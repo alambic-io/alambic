@@ -62,9 +62,8 @@ Add validation at the top of the `range` function. Throw `AlambicError` with cod
 ### Step 5: Verify
 
 ```bash
-pnpm --filter @alambic/schema test
-pnpm --filter @alambic/schema typecheck
-pnpm lint
+vp run --filter @alambic/schema test
+vp check
 pnpm alambic doctor
 ```
 

@@ -13,14 +13,14 @@ The order optimizes for two things:
 **Goal:** Workspace builds, lints, tests, releases a `0.0.0-alpha.0` placeholder package to npm.
 
 - [ ] Repo init, license, README, root `CLAUDE.md`, `AGENTS.md`.
-- [ ] pnpm workspace, Turborepo config, base `tsconfig`, Biome config.
-- [ ] `packages/_template/` with package.json, tsup config, CLAUDE.md template.
+- [ ] pnpm workspace, Vite+ root `vite.config.ts`, base `tsconfig.base.json`.
+- [ ] `packages/_template/` with package.json, vite.config.ts, CLAUDE.md template.
 - [ ] Changesets installed, CI workflow for PR checks and release on main.
-- [ ] `packages/cli/` skeleton — a `alambic --version` that prints something.
+- [ ] `packages/cli/` skeleton — `alambic --version` prints something.
 - [ ] `alambic doctor` skeleton — exits 0 with a fake "all good" message.
 - [ ] First release to npm under `next` tag.
 
-**Definition of done:** `pnpm install && pnpm build && pnpm test && pnpm lint` succeeds in a clean clone. CI is green. A version-bump PR can flow through and publish.
+**Definition of done:** `pnpm install && vp check && vp run -r build && vp run -r test` succeeds in a clean clone. CI is green. A version-bump PR can flow through and publish.
 
 ---
 
@@ -53,7 +53,7 @@ The order optimizes for two things:
 - [ ] Migrate `examples/tailwind-alpine-theme` to TS schemas.
 - [ ] `alambic new section` scaffolder.
 
-**Definition of done:** Editing `sections/x/schema.ts` regenerates `Theme.Section<'x'>` and the editor picks it up within 200ms. Authoring a section setting with a type mismatch fails `pnpm typecheck`.
+**Definition of done:** Editing `sections/x/schema.ts` regenerates `Theme.Section<'x'>` and the editor picks it up within 200ms. Authoring a section setting with a type mismatch fails `vp check`.
 
 ---
 

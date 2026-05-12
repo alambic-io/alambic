@@ -29,18 +29,21 @@ If a feature request needs one of the above, the answer is no.
 | Concern | Choice |
 |---|---|
 | Theme runtime | Shopify CLI (`shopify theme dev`, `shopify theme push`) |
-| Build engine | Vite 8 |
-| Language | TypeScript, strict mode, project references |
+| Toolchain | [Vite+](https://viteplus.dev) — single `vp` CLI for dev, build, check, test, pack, run |
+| Build engine | Vite 8 (via Vite+) |
+| Language | TypeScript, strict mode |
 | Package manager | pnpm 9+ |
-| Monorepo orchestrator | Turborepo |
-| Library bundler | tsup |
-| Test runner | Vitest |
-| Lint + format | Biome |
+| Monorepo orchestrator | `vp run` (Vite Task) |
+| Library bundler | `vp pack` (tsdown / Rolldown) |
+| Test runner | `vp test` (Vitest) |
+| Lint + format + typecheck | `vp check` (Oxlint + Oxfmt + tsgolint) |
 | Versioning | Changesets |
 | CI | GitHub Actions |
-| Node | 22 LTS |
+| Node | 22.12+ |
 | License | MIT |
 | npm scope | `@alambic/*` |
+
+Vite+ consolidates the toolchain into one config (`vite.config.ts`) and one CLI (`vp`). Configuration lives in the root and per-package `vite.config.ts` files — no separate `biome.json`, `turbo.json`, `tsup.config.ts`, `vitest.config.ts`, or `.oxlintrc`.
 
 Every package targets ESM only. CommonJS is not supported. Every package emits `.d.ts` from source.
 
@@ -54,9 +57,8 @@ alambic/
 ├── LICENSE                         # MIT
 ├── package.json                    # Workspace root
 ├── pnpm-workspace.yaml
-├── turbo.json
+├── vite.config.ts                  # Vite+ root config (lint, fmt, shared)
 ├── tsconfig.base.json              # Base TS config inherited by packages
-├── biome.json
 ├── .changeset/
 ├── .claude/                        # Claude Code config & recipes
 │   ├── settings.json
@@ -119,20 +121,23 @@ Dependency direction is one-way. Cycles are a build error. See `docs/architectur
 ```bash
 # First time
 pnpm install
-pnpm build           # Build all packages once so workspace links resolve
-pnpm dev             # Watch mode across all packages
+pnpm build           # vp run -r build — build everything so workspace links resolve
 
-# Day to day
-pnpm --filter @alambic/core dev    # Watch a single package
-pnpm test                          # All tests
-pnpm --filter @alambic/schema test # One package
-pnpm lint                          # Biome check
-pnpm typecheck                     # tsc --build across the workspace
-pnpm changeset                     # Record a version-bump intent
-pnpm release                       # Run by CI on main; do not run locally
+# Day to day (Vite+: `vp` is the single CLI)
+vp run -r build                              # Build all packages
+vp run --filter @alambic/core dev            # Watch a single package
+vp run -r test                               # Run all tests
+vp run --filter @alambic/schema test         # Test one package
+vp check                                     # Lint + format + typecheck in one pass
+vp check --fix                               # Apply auto-fixes
+vp pack                                      # Library packaging for the current package
+
+# Versioning (still Changesets)
+pnpm changeset                               # Record a version-bump intent
+pnpm release                                 # Run by CI on main; do not run locally
 
 # Try the CLI against an example theme
-pnpm --filter examples/tailwind-alpine-theme dev
+vp run --filter examples/tailwind-alpine-theme dev
 ```
 
 ## 8. Working with Alambic — the Claude Code path

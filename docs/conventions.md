@@ -20,7 +20,7 @@ packages/<name>/
 ├── README.md                  # User-facing
 ├── package.json
 ├── tsconfig.json
-├── tsup.config.ts
+├── vite.config.ts                # Vite+ config (pack + test blocks)
 ├── src/
 │   ├── index.ts               # Public entry — only exports
 │   ├── <feature>/             # Feature-grouped folders

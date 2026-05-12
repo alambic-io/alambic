@@ -6,6 +6,7 @@ packages:
 public-hoist-pattern:
   - '*types*'
   - 'typescript'
-  - 'biome'
+  - 'vite-plus'
+  - 'oxlint'
+  - 'oxfmt'
   - 'vitest'
-  - 'tsup'

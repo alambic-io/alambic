@@ -42,7 +42,7 @@ Generated files carry a `// alambic:generated <pkg>@<version> — do not edit` h
 Use the slash command: `/add-package`. Manual steps for reference:
 
 1. Create `packages/<name>/`.
-2. Copy `packages/_template/` contents (package.json, tsconfig.json, tsup.config.ts, CLAUDE.md, README.md, src/index.ts).
+2. Copy `packages/_template/` contents (package.json, tsconfig.json, vite.config.ts, CLAUDE.md, README.md, src/index.ts).
 3. Rename `name` in `package.json` to `@alambic/<name>`.
 4. Add the package to the dependency table in root `CLAUDE.md` § 5.
 5. Write the `CLAUDE.md` with: purpose, public API surface, internal modules, dependencies, testing approach. **Do this before writing any source code.**
@@ -113,9 +113,8 @@ Type generators live in `packages/types/src/generators/`. Each generator is a pu
 
 A task is **not done** until:
 
-- [ ] `pnpm typecheck` passes for the changed packages.
-- [ ] `pnpm test --filter @alambic/<pkg>...` passes.
-- [ ] `pnpm lint` passes.
+- [ ] `vp check` passes (lint + format + typecheck in one pass).
+- [ ] `vp run --filter @alambic/<pkg>... test` passes.
 - [ ] `pnpm alambic doctor` exits 0.
 - [ ] A changeset exists if the change is user-visible.
 - [ ] The relevant `CLAUDE.md` reflects the new state.

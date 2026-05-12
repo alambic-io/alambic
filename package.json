@@ -1,0 +1,33 @@
+{
+  "name": "alambic",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A composable, type-safe devkit for Shopify theme development.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vp run -r build",
+    "dev": "vp run -r --parallel dev",
+    "test": "vp run -r test",
+    "check": "vp check",
+    "check:fix": "vp check --fix",
+    "format": "vp fmt",
+    "lint": "vp lint",
+    "alambic": "alambic",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "vp run -r build && changeset publish"
+  },
+  "devDependencies": {
+    "@alambic/cli": "workspace:*",
+    "@changesets/cli": "^2.31.0",
+    "@types/node": "^22.19.19",
+    "typescript": "^6.0.3",
+    "vite-plus": "^0.1.20"
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

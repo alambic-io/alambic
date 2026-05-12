@@ -1,0 +1,35 @@
+{
+  "name": "@alambic/_template",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Template package — copy this directory when scaffolding a new Alambic package.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "vite-plus": "^0.1.20",
+    "vitest": "^4.1.6"
+  }
+}
