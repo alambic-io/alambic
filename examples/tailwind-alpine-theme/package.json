@@ -1,0 +1,21 @@
+{
+  "name": "@examples/tailwind-alpine-theme",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reference Alambic theme using the Tailwind + Alpine preset.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "alambic dev",
+    "dev:standalone": "alambic dev --no-shopify-cli",
+    "build": "alambic build"
+  },
+  "dependencies": {
+    "@alambic/cli": "workspace:*",
+    "@alambic/core": "workspace:*",
+    "@alambic/preset-tailwind-alpine": "workspace:*",
+    "@tailwindcss/vite": "^4.1.16",
+    "alpinejs": "^3.14.9",
+    "tailwindcss": "^4.1.16"
+  }
+}

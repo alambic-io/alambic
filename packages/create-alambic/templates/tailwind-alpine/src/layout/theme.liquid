@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }}</title>
+    {% render 'alambic-asset', entry: 'layout/theme' %}
+    {% render 'alambic-asset', entry: 'runtime' %}
+  </head>
+  <body class="min-h-screen bg-white text-neutral-900">
+    {{ content_for_layout }}
+  </body>
+</html>

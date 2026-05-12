@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "settings": { "heading": "Not found", "subheading": "This page does not exist." }
+    }
+  },
+  "order": ["hero"]
+}

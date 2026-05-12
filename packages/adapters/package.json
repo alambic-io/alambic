@@ -1,11 +1,8 @@
 {
-  "name": "@alambic/cli",
+  "name": "@alambic/adapters",
   "version": "0.0.0",
-  "description": "Command-line interface for Alambic — Shopify theme devkit.",
+  "description": "CSS + JS adapter contracts for Alambic. Interfaces and types only — no implementations.",
   "license": "MIT",
-  "bin": {
-    "alambic": "./dist/cli.mjs"
-  },
   "files": [
     "dist",
     "README.md",
@@ -30,12 +27,7 @@
     "test": "vp test",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@alambic/core": "workspace:*",
-    "commander": "^14.0.3"
-  },
   "devDependencies": {
-    "@types/node": "^22.19.19",
     "vite": "^8.0.12",
     "vite-plus": "^0.1.20",
     "vitest": "^4.1.6"

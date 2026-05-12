@@ -1,11 +1,8 @@
 {
-  "name": "@alambic/cli",
+  "name": "@alambic/core",
   "version": "0.0.0",
-  "description": "Command-line interface for Alambic — Shopify theme devkit.",
+  "description": "Alambic core — Vite plugin entry, dev server orchestration, build pipeline.",
   "license": "MIT",
-  "bin": {
-    "alambic": "./dist/cli.mjs"
-  },
   "files": [
     "dist",
     "README.md",
@@ -19,6 +16,14 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.mts",
+      "import": "./dist/errors.mjs"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.mts",
+      "import": "./dist/logger.mjs"
     }
   },
   "publishConfig": {
@@ -31,8 +36,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@alambic/core": "workspace:*",
-    "commander": "^14.0.3"
+    "@alambic/adapters": "workspace:*",
+    "consola": "^3.4.2",
+    "tinyglobby": "^0.2.10"
   },
   "devDependencies": {
     "@types/node": "^22.19.19",
@@ -42,10 +48,5 @@
   },
   "peerDependencies": {
     "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
-  },
-  "peerDependenciesMeta": {
-    "vite": {
-      "optional": true
-    }
   }
 }

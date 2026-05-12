@@ -1,0 +1,21 @@
+{
+  "name": "{{PROJECT_NAME}}",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An Alambic theme.",
+  "type": "module",
+  "scripts": {
+    "dev": "alambic dev",
+    "dev:standalone": "alambic dev --no-shopify-cli",
+    "build": "alambic build"
+  },
+  "dependencies": {
+    "@alambic/cli": "latest",
+    "@alambic/core": "latest",
+    "@alambic/preset-tailwind-alpine": "latest",
+    "@tailwindcss/vite": "^4.1.16",
+    "alpinejs": "^3.14.9",
+    "tailwindcss": "^4.1.16",
+    "vite": "^8.0.12"
+  }
+}
