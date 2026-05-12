@@ -1,0 +1,11 @@
+packages:
+  - 'packages/*'
+  - 'examples/*'
+
+# Hoisting: keep peer deps unhoisted so peer-dep contracts are explicit.
+public-hoist-pattern:
+  - '*types*'
+  - 'typescript'
+  - 'biome'
+  - 'vitest'
+  - 'tsup'
