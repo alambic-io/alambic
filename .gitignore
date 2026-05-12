@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Vite+ task cache
+node_modules/.vite/
+
+# Alambic generated artifacts
+.alambic/
+**/.alambic/
+
+# Test artifacts
+coverage/
+**/coverage/
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Misc
+.cache/
+tmp/
