@@ -70,22 +70,24 @@ alambic/
 │   ├── conventions.md              # Code conventions
 │   └── claude-code-workflows.md    # Detailed Claude Code playbook
 ├── packages/
-│   ├── core/                       # Vite plugin entry, orchestrator
-│   ├── schema/                     # TS-authored section schemas
-│   ├── types/                      # Theme-wide type generation
-│   ├── hmr/                        # Section-aware HMR
-│   ├── islands/                    # Hydration directives & bundling
-│   ├── manifest/                   # Per-template manifest, critical CSS
+│   ├── _template/                  # Skeleton copied by /add-package
+│   ├── core/                       # Vite plugin entry, orchestrator, staging
+│   ├── schema/                     # TS-authored section schemas        (Phase 2)
+│   ├── types/                      # Theme-wide type generation         (Phase 2)
+│   ├── hmr/                        # Section-aware HMR                  (Phase 3)
+│   ├── islands/                    # Hydration directives & bundling    (Phase 4)
+│   ├── manifest/                   # Per-template manifest, critical CSS (Phase 5)
 │   ├── adapters/                   # CSS + JS adapter contracts
 │   ├── preset-tailwind-alpine/     # Default preset
-│   ├── test-utils/                 # Vitest helpers, preview server
-│   ├── lsp/                        # Liquid LSP server
+│   ├── test-utils/                 # Vitest helpers, preview server     (Phase 6)
+│   ├── lsp/                        # Liquid LSP server                  (Phase 7)
 │   ├── cli/                        # `alambic` CLI
 │   └── create-alambic/             # `pnpm create alambic` scaffolder
 └── examples/
-    ├── minimal/                    # Bare-bones consumer theme
     └── tailwind-alpine-theme/      # Reference theme using the default preset
 ```
+
+**Per-consumer-theme runtime layout**: each consumer theme has a `src/` (authored) and `.alambic/theme/` (alambic-generated, gitignored). The staging dir doubles as the build output — `alambic dev` lives-syncs it from `src/` and `alambic build` rebuilds it in one shot. The Shopify CLI reads from `.alambic/theme/` in both cases. See `docs/architecture.md` § 2–3.
 
 ## 5. Package boundaries (one-liners)
 
@@ -147,7 +149,7 @@ Read **`AGENTS.md`** for the playbook. Highlights:
 - Every package has a `CLAUDE.md`. Always read the target package's `CLAUDE.md` before editing code in it.
 - `.claude/commands/` contains slash commands for repetitive tasks: `/add-package`, `/add-section`, `/typecheck-changed`, `/release-notes`, etc.
 - The `alambic doctor` CLI command is the single source of truth for "is the workspace healthy." Run it before and after any non-trivial change.
-- Tests must pass before any commit. `pnpm test --filter <changed-package>` is the minimum bar.
+- Tests must pass before any commit. `vp run --filter @alambic/<pkg> test` is the minimum bar.
 - Never edit generated files. Generated files have a `// alambic:generated` header and live under `**/.alambic/` directories.
 
 ## 9. Versioning and release

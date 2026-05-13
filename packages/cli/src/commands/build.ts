@@ -1,35 +1,50 @@
-import { alambic, copyTheme, resolveConfig } from '@alambic/core';
+import { alambic, applyEnvFiles, resolveConfig } from '@alambic/core';
 import { build } from 'vite';
 import { loadConfig } from '../internal/load-config.js';
 
 export interface BuildOptions {
   cwd: string;
   configPath?: string;
+  envName?: string;
 }
 
 /**
- * `alambic build` — runs the Vite build (which emits assets and the
- * manifest snippet via the orchestrator plugin), then copies the
- * static Liquid/JSON parts of the theme into the output directory.
+ * `alambic build` — invokes the Vite build. The orchestrator plugin
+ * runs the staging copy (flattening + passthrough) in `buildStart`
+ * and writes the production asset snippet in `writeBundle`. Nothing
+ * left to do here besides print stats.
+ *
+ * `--env <name>` is honored but Phase 1 builds are env-agnostic.
  */
 export async function buildCommand(options: BuildOptions): Promise<void> {
+  applyEnvFiles(options.cwd, null);
+
   const { config, cwd } = await loadConfig(options.cwd, options.configPath);
-  const resolved = resolveConfig(config, cwd);
+
+  const envName = options.envName ?? config.defaultEnvironment ?? null;
+  if (envName) {
+    applyEnvFiles(cwd, envName);
+  }
+
+  const resolved = resolveConfig(
+    {
+      ...config,
+      ...(envName !== null ? { activeEnvironmentName: envName } : {}),
+    },
+    cwd,
+  );
   const start = Date.now();
 
   process.stdout.write(`alambic build: ${resolved.themeRoot} → ${resolved.output}\n`);
 
   await build({
     configFile: false,
-    plugins: alambic({ ...config, noShopifyCli: true }),
+    plugins: alambic({
+      ...config,
+      noShopifyCli: true,
+      ...(envName !== null ? { activeEnvironmentName: envName } : {}),
+    }),
   });
 
-  const copied = await copyTheme({
-    themeRoot: resolved.themeRoot,
-    output: resolved.output,
-  });
-
-  process.stdout.write(
-    `  copied ${copied.length} theme files\n  done in ${Date.now() - start}ms\n`,
-  );
+  process.stdout.write(`  done in ${Date.now() - start}ms\n`);
 }

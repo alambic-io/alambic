@@ -90,7 +90,7 @@ src/
     └── timeouts.ts
 ```
 
-The browser bundle is built separately by tsup (`tsup --entry src/client/index.ts --format esm --no-splitting`). It must be smaller than 4 KB gzipped — there's a CI check.
+The browser bundle is built as a separate `vp pack` entry (`entry: { client: 'src/client/index.ts' }`, ESM, no splitting). It must be smaller than 4 KB gzipped — there's a CI check.
 
 ## Dependencies
 

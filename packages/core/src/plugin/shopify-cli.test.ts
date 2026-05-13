@@ -6,11 +6,11 @@ import { createLogger } from '../logger/index.js';
 import { spawnShopifyDev } from './shopify-cli.js';
 
 describe('spawnShopifyDev', () => {
-  it('spawns the configured binary, captures exit code, and supports shutdown', async () => {
+  it('spawns the configured binary, exposes a handle, and supports shutdown', async () => {
     const themeRoot = await mkdtemp(join(tmpdir(), 'alambic-cli-'));
     const logger = createLogger('test:shopify-cli');
 
-    // Use `node -e` as a stand-in for `shopify`. It runs forever until killed.
+    // Stand in for `shopify`: a long-running node process.
     const handle = spawnShopifyDev({
       themeRoot,
       port: 9292,

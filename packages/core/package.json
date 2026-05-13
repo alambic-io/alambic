@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@alambic/adapters": "workspace:*",
+    "chokidar": "^4.0.3",
     "consola": "^3.4.2",
     "tinyglobby": "^0.2.10"
   },

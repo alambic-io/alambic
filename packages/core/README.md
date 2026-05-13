@@ -17,8 +17,7 @@ import { tailwindAlpine } from '@alambic/preset-tailwind-alpine';
 
 export default defineConfig({
   preset: tailwindAlpine(),
-  themeRoot: './src',
-  output: './dist/theme',
+  // themeRoot defaults to './src', output defaults to './.alambic/theme'
 });
 ```
 

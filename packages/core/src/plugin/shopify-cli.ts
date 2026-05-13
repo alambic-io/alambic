@@ -23,12 +23,17 @@ export interface ShopifyCliHandle {
 }
 
 /**
- * Spawn `shopify theme dev` and stream its stdio to our logger.
+ * Spawn `shopify theme dev` with stdio inherited from the parent.
  *
- * Phase 1 scope: we don't proxy traffic. The Shopify CLI's preview URL
- * is left as-is and the Vite dev server runs alongside on a separate
- * port. Later phases will introduce HTTP proxying so a single URL
- * serves both.
+ * stdio is inherited (not piped) for two reasons:
+ *   1. The CLI's output uses ANSI box-drawing characters that get
+ *      mangled by line-by-line re-logging.
+ *   2. The CLI accepts interactive keystrokes (`t`/`p`/`e`/`g`) to
+ *      open preview URLs — those only work if stdin is connected.
+ *
+ * Phase 1 scope: no HTTP proxying. The Shopify CLI's preview URL is
+ * left as-is and Vite runs alongside on a separate port. Later phases
+ * will introduce proxying so a single URL serves both.
  */
 export function spawnShopifyDev(options: ShopifyCliOptions): ShopifyCliHandle {
   const binary = options.binary ?? 'shopify';
@@ -40,7 +45,7 @@ export function spawnShopifyDev(options: ShopifyCliOptions): ShopifyCliHandle {
   try {
     child = spawn(binary, args, {
       cwd: options.themeRoot,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: 'inherit',
       env: process.env,
     });
   } catch (cause) {
@@ -53,17 +58,6 @@ export function spawnShopifyDev(options: ShopifyCliOptions): ShopifyCliHandle {
   }
 
   let running = true;
-
-  child.stdout?.setEncoding('utf8').on('data', (chunk: string) => {
-    for (const line of chunk.split(/\r?\n/)) {
-      if (line.length > 0) options.logger.info(`shopify> ${line}`);
-    }
-  });
-  child.stderr?.setEncoding('utf8').on('data', (chunk: string) => {
-    for (const line of chunk.split(/\r?\n/)) {
-      if (line.length > 0) options.logger.warn(`shopify! ${line}`);
-    }
-  });
 
   const exited = new Promise<number | null>((resolve) => {
     child.once('exit', (code) => {

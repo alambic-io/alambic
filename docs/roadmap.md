@@ -8,37 +8,52 @@ The order optimizes for two things:
 
 ---
 
-## Phase 0 — Monorepo bootstrap (0.0.0)
+## Phase 0 — Monorepo bootstrap (0.0.0) ✅
 
 **Goal:** Workspace builds, lints, tests, releases a `0.0.0-alpha.0` placeholder package to npm.
 
-- [ ] Repo init, license, README, root `CLAUDE.md`, `AGENTS.md`.
-- [ ] pnpm workspace, Vite+ root `vite.config.ts`, base `tsconfig.base.json`.
-- [ ] `packages/_template/` with package.json, vite.config.ts, CLAUDE.md template.
-- [ ] Changesets installed, CI workflow for PR checks and release on main.
-- [ ] `packages/cli/` skeleton — `alambic --version` prints something.
-- [ ] `alambic doctor` skeleton — exits 0 with a fake "all good" message.
-- [ ] First release to npm under `next` tag.
+- [x] Repo init, license, README, root `CLAUDE.md`, `AGENTS.md`.
+- [x] pnpm workspace, Vite+ root `vite.config.ts`, base `tsconfig.base.json`.
+- [x] `packages/_template/` with package.json, vite.config.ts, CLAUDE.md template.
+- [x] Changesets installed, CI workflow for PR checks and release on main.
+- [x] `packages/cli/` skeleton — `alambic --version` prints something.
+- [x] `alambic doctor` skeleton — exits 0 with a fake "all good" message.
+- [ ] First release to npm under `next` tag.  *(deferred — requires NPM_TOKEN)*
 
 **Definition of done:** `pnpm install && vp check && vp run -r build && vp run -r test` succeeds in a clean clone. CI is green. A version-bump PR can flow through and publish.
 
 ---
 
-## Phase 1 — Minimum viable dev loop (0.1.0)
+## Phase 1 — Minimum viable dev loop (0.1.0) ✅
 
 **Goal:** A consumer can run `pnpm dev` and see Vite-served JS/CSS in a Shopify dev theme. No HMR fanciness yet, no schemas, no types. Just barrel-parity.
 
-- [ ] `@alambic/adapters` — contract types only, no implementations.
-- [ ] `@alambic/core` — Vite plugin that:
+- [x] `@alambic/adapters` — contract types only, no implementations.
+- [x] `@alambic/core` — Vite plugin that:
   - Detects entry points by convention.
-  - Generates a `vite-tag.liquid` equivalent (`alambic-asset.liquid`).
-  - Spawns `shopify theme dev` and proxies through Vite.
-- [ ] `@alambic/preset-tailwind-alpine` — Tailwind v4 + Alpine wired through the adapter contract.
-- [ ] `@alambic/cli` — `alambic dev`, `alambic build`.
-- [ ] `examples/tailwind-alpine-theme/` — a working theme to test against.
-- [ ] `create-alambic` — first version, copies the example theme.
+  - Generates an `alambic-asset.liquid` snippet (dev + build modes).
+  - Spawns `shopify theme dev` reading from `.alambic/theme/` via `--path`.
+  - Owns the staging dir: `buildStaging` (one-shot) + `watchStaging` (live sync).
+  - Logger, AlambicError, EventBus.
+- [x] `@alambic/preset-tailwind-alpine` — Tailwind v4 + Alpine wired through the adapter contract (token gen + critical CSS + generated bindings deferred to Phase 2/5).
+- [x] `@alambic/cli` — `alambic dev`, `alambic build`, `alambic doctor`.
+- [x] `examples/tailwind-alpine-theme/` — a working theme to test against.
+- [x] `create-alambic` — first version, copies the example theme.
 
-**Definition of done:** `pnpm create alambic test-theme && cd test-theme && pnpm dev` shows the storefront with Vite-served assets and basic CSS HMR. `pnpm build && shopify theme push` produces a working theme.
+**Phase 1.5 additions** (not in the original Phase 1 scope but landed alongside):
+- [x] Environment management — `environments`, `defaultEnvironment`, `env('VAR')`, `--env <name>`. Vite-style `.env.[name][.local]` loading. Active env translates to `--store` / `--theme` / `--store-password` flags.
+- [x] Staging architecture — nested section folders in `src/` automatically flattened to Shopify-compliant `sections/<name>.liquid` in `.alambic/theme/`. Live watcher in dev.
+
+**Definition of done:** `pnpm create alambic test-theme && cd test-theme && pnpm dev` shows the storefront with Vite-served assets and basic CSS HMR. `pnpm build && shopify theme push --path .alambic/theme` produces a working theme.
+
+**Still deferred to later phases:**
+- HTTP proxying through Vite (Phase 3+). Today Vite (`:5173`) and `shopify theme dev` (`:9292`) run side-by-side; the `alambic-asset` snippet emits `:5173` URLs in dev.
+- Section-aware HMR via Section Rendering API (Phase 3).
+- Schema compile from `sections/<name>/schema.ts` → inlined `{% schema %}` block (Phase 2; today `{% schema %}` is authored inside `index.liquid`).
+- Type generation (Phase 2).
+- Token emission, critical CSS, generated Alpine bindings, per-island hydration (Phase 2/4/5).
+- `alambic push` / `alambic build --push` (Phase 3).
+- `alambic new …` scaffolding inside an existing theme (Phase 2).
 
 ---
 

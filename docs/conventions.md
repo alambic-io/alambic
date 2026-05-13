@@ -29,7 +29,7 @@ packages/<name>/
 │   └── internal/              # Strictly package-private
 ├── test/                      # Cross-cutting tests (integration)
 ├── __fixtures__/              # Test fixtures
-└── dist/                      # Build output (gitignored)
+└── dist/                      # Build output of `vp pack` (gitignored)
 ```
 
 Tests for a unit live next to the unit: `foo.ts` + `foo.test.ts` in the same folder. `test/` is for integration tests that don't belong to a single unit.

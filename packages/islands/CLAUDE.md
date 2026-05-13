@@ -71,7 +71,7 @@ At build time, `islandsPlugin` inspects each section's `client.ts` and produces 
 The output of the build includes:
 
 ```
-dist/theme/assets/
+.alambic/theme/assets/
 ├── alambic-runtime.[hash].js          # Hydration runtime (~2 KB gzip)
 ├── alambic-vendor.[hash].js           # Shared dependencies
 ├── island.product-gallery.[hash].js

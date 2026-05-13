@@ -16,11 +16,13 @@ export async function run(argv: readonly string[]): Promise<void> {
     .command('dev')
     .description('Start the dev loop: Vite dev server + shopify theme dev')
     .option('--config <path>', 'path to alambic.config.{ts,mjs,js}')
+    .option('--env <name>', 'environment name (loads .env.[name][.local])')
     .option('--no-shopify-cli', 'skip spawning the Shopify CLI subprocess')
-    .action(async (opts: { config?: string; shopifyCli?: boolean }) => {
+    .action(async (opts: { config?: string; env?: string; shopifyCli?: boolean }) => {
       await devCommand({
         cwd: process.cwd(),
         ...(opts.config !== undefined ? { configPath: opts.config } : {}),
+        ...(opts.env !== undefined ? { envName: opts.env } : {}),
         noShopifyCli: opts.shopifyCli === false,
       });
     });
@@ -29,10 +31,12 @@ export async function run(argv: readonly string[]): Promise<void> {
     .command('build')
     .description('Build the production theme into dist/theme/')
     .option('--config <path>', 'path to alambic.config.{ts,mjs,js}')
-    .action(async (opts: { config?: string }) => {
+    .option('--env <name>', 'environment name (loads .env.[name][.local])')
+    .action(async (opts: { config?: string; env?: string }) => {
       await buildCommand({
         cwd: process.cwd(),
         ...(opts.config !== undefined ? { configPath: opts.config } : {}),
+        ...(opts.env !== undefined ? { envName: opts.env } : {}),
       });
       process.exit(0);
     });

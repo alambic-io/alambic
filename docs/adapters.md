@@ -59,7 +59,7 @@ export interface JsAdapter {
 export interface AdapterContext {
   readonly mode: 'dev' | 'build';
   readonly themeRoot: string;        // absolute path to source theme
-  readonly outputRoot: string;       // absolute path to dist/theme
+  readonly outputRoot: string;       // absolute path to .alambic/theme
   readonly sections: ReadonlyArray<CompiledSection>;
   readonly settings: ThemeSettings;
   readonly logger: Logger;

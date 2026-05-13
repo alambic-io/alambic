@@ -1,4 +1,6 @@
-dist/
 node_modules/
 .alambic/
-src/snippets/alambic-asset.liquid
+
+# Env files: only `.local` variants are secret
+.env.local
+.env.*.local

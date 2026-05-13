@@ -23,28 +23,54 @@ It does **not** know what Tailwind, Alpine, schemas, or types are. Those live in
 Exports from `src/index.ts`:
 
 ```ts
-export { defineConfig } from './config';
+// Config
+export { defineConfig, resolveConfig } from './config';
+export type { AlambicConfig, AlambicPluginOptions, ResolvedAlambicConfig } from './types';
+
+// Vite plugin
 export { alambic } from './plugin';
-export type { AlambicConfig, AlambicPluginOptions } from './types';
-export { AlambicError } from './errors';
-export { createLogger, type Logger } from './logger';
-export { createEventBus, type EventBus } from './events';
+
+// Environment
+export {
+  env,
+  environmentToCliFlags,
+  isEnvRef,
+  resolveEnvironment,
+  type Environment,
+  type EnvRef,
+  type EnvValue,
+  type ResolvedEnvironment,
+} from './env';
+export { applyEnvFiles } from './env/load-env';
+
+// Staging (src → .alambic/theme transformation)
+export { buildStaging, type BuildStagingOptions } from './staging/build';
+export { watchStaging, type StagingWatcher, type WatchStagingOptions } from './staging/watch';
+export { mapFile, type MapResult } from './staging/map';
+
+// Infrastructure
+export { AlambicError, isAlambicError, type AlambicErrorOptions } from './errors';
+export { createLogger, type Logger, type LogLevel } from './logger';
+export { createEventBus, type EventBus, type EventName, type EventHandler, type AlambicEvents, type FileChangedKind } from './events';
 ```
 
-That's all. Anything else is internal.
+Anything else is internal.
 
 ### `defineConfig`
 
-Identity-with-types helper for `alambic.config.ts`:
+Identity-with-types helper for `alambic.config.ts`. `themeRoot` defaults to `'./src'`; `output` defaults to `'./.alambic/theme'` (a hidden staging directory used by both `alambic dev` and `alambic build`):
 
 ```ts
-import { defineConfig } from '@alambic/core';
+import { defineConfig, env } from '@alambic/core';
 import { tailwindAlpine } from '@alambic/preset-tailwind-alpine';
 
 export default defineConfig({
   preset: tailwindAlpine(),
-  themeRoot: './src',
-  output: './dist/theme',
+  environments: {
+    dev:  { store: env('SHOPIFY_DEV_STORE'),  themeId: env('SHOPIFY_DEV_THEME_ID') },
+    prod: { store: env('SHOPIFY_PROD_STORE'), themeId: env('SHOPIFY_PROD_THEME_ID') },
+  },
+  defaultEnvironment: 'dev',
 });
 ```
 
@@ -68,25 +94,29 @@ export default defineConfig({
 ```
 src/
 ├── index.ts                # Public exports
+├── types.ts                # AlambicConfig, ResolvedAlambicConfig, plugin options
 ├── config/
-│   ├── index.ts
-│   ├── load.ts             # Load and validate alambic.config.ts
-│   └── schema.ts           # Zod schema for config
+│   └── index.ts            # defineConfig, resolveConfig (env-aware)
+├── env/
+│   ├── index.ts            # env(), Environment, resolveEnvironment, environmentToCliFlags
+│   └── load-env.ts         # applyEnvFiles (delegates to Vite's loadEnv)
 ├── plugin/
-│   ├── index.ts            # `alambic()` factory
-│   ├── orchestrator.ts     # Top-level plugin coordinating sub-plugins
-│   ├── shopify-cli.ts      # Spawn & proxy `shopify theme dev`
-│   ├── dev-server.ts       # Vite dev middleware setup
-│   └── build.ts            # Build pipeline
+│   ├── index.ts            # `alambic()` factory + orchestrator plugin
+│   ├── asset-snippet.ts    # alambic-asset.liquid rendering (dev + build modes)
+│   ├── entries.ts          # Default convention-based entry discovery
+│   └── shopify-cli.ts      # Spawn `shopify theme dev` (stdio: inherit)
+├── staging/
+│   ├── map.ts              # mapFile() — src/ → .alambic/theme/ path rules
+│   ├── build.ts            # buildStaging() — one-shot transform
+│   └── watch.ts            # watchStaging() — chokidar-backed live sync
 ├── events/
-│   └── bus.ts              # Typed event bus (file-changed, section-updated, ...)
+│   └── index.ts            # Typed event bus
 ├── errors/
-│   └── index.ts            # `AlambicError`
+│   └── index.ts            # AlambicError
 ├── logger/
-│   └── index.ts            # consola wrapper, scoped loggers, JSON mode
+│   └── index.ts            # consola wrapper, scoped loggers
 └── internal/
-    ├── theme-paths.ts      # Resolve src→dist paths
-    └── shopify-cli-ipc.ts  # Low-level CLI invocation
+    └── theme-paths.ts      # entryIdFor() helper
 ```
 
 ## Dependencies on other Alambic packages

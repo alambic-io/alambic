@@ -19,31 +19,45 @@ export type { CliCommand, CliContext } from './types';
 
 ## Commands
 
+Phase 1 (shipped):
+
 | Command | Description |
 |---|---|
-| `alambic dev` | Watch + Vite + Shopify CLI proxy. The main dev loop. |
-| `alambic build` | Production build → `dist/theme/`. |
-| `alambic build --push` | Build then push via `shopify theme push --json`. |
-| `alambic build --report` | Build and emit `dist/alambic-report.json` with budgets, asset graph. |
-| `alambic new section <name>` | Scaffold `src/sections/<name>/` from template. |
-| `alambic new snippet <name>` | Scaffold `src/snippets/<name>.liquid`. |
-| `alambic new template <name>` | Scaffold `src/templates/<name>.json`. |
-| `alambic types` | One-shot type generation. No watch. |
-| `alambic types --refresh` | Invalidate Admin API cache and regenerate. |
-| `alambic schema check` | Validate all section schemas without building. |
+| `alambic dev` | Boot Vite dev server + spawn `shopify theme dev` reading from `.alambic/theme/`. Live-syncs `src/` → `.alambic/theme/`. |
+| `alambic build` | One-shot build into `.alambic/theme/` (staging copy + Vite assets + manifest snippet). |
 | `alambic doctor` | Workspace + theme health check. |
-| `alambic preview` | Run the section preview server (`@alambic/test-utils`). |
-| `alambic upgrade` | Upgrade Alambic packages in the consumer project to the latest matching range. |
+| `alambic --version` | Print the CLI version. |
 
-Every command supports `--json` for machine-readable output, used by CI and Claude Code.
+Planned (later phases):
+
+| Command | Description | Phase |
+|---|---|---|
+| `alambic build --push` | Build then `shopify theme push --path .alambic/theme`. | 3 |
+| `alambic build --report` | Emit `.alambic/report.json` with budgets, asset graph. | 5 |
+| `alambic push [--env <name>]` | Push staging dir to a specific environment. | 3 |
+| `alambic new section <name>` | Scaffold `src/sections/<name>/` from template. | 2 |
+| `alambic new snippet <name>` | Scaffold `src/snippets/<name>.liquid`. | 2 |
+| `alambic new template <name>` | Scaffold `src/templates/<name>.json`. | 2 |
+| `alambic types` | One-shot type generation. No watch. | 2 |
+| `alambic types --refresh` | Invalidate Admin API cache and regenerate. | 2 |
+| `alambic schema check` | Validate all section schemas without building. | 2 |
+| `alambic preview` | Run the section preview server (`@alambic/test-utils`). | 6 |
+| `alambic upgrade` | Upgrade Alambic packages in the consumer project. | future |
+
+Every command will support `--json` for machine-readable output (used by CI and Claude Code). The Phase 1 commands don't yet — flag is reserved.
 
 ## Flag conventions
 
+Shipped today:
+- `--config <path>` — Override `alambic.config.ts` location. (dev, build)
+- `--env <name>` — Active environment from `environments` in config. (dev, build)
+- `--no-shopify-cli` — Skip spawning the Shopify CLI subprocess. (dev)
+- `--json` — Machine-readable output. (doctor)
+
+Planned:
 - `--theme-root <path>` — Override theme source root (default: `./src`).
-- `--config <path>` — Override `alambic.config.ts` location.
 - `--verbose` — Equivalent to `ALAMBIC_LOG=debug`.
 - `--quiet` — Suppress non-error output.
-- `--json` — Machine-readable output.
 - `--no-color` — Disable ANSI colors.
 
 ## `alambic doctor`

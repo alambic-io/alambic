@@ -27,11 +27,11 @@ Do **not** open files in unrelated packages unless tests fail there.
 ## 2. Mental model for the file system
 
 - `src/` — source. Everything in `src/` is authored.
-- `dist/` — build output. Never edited.
-- `**/.alambic/` — generated artifacts emitted by Alambic itself when running against a consumer theme. Never edited.
+- `dist/` — alambic package build output (per `vp pack`). Never edited.
+- `**/.alambic/` — generated artifacts emitted by Alambic against a consumer theme (`.alambic/theme/`, `.alambic/types/`, etc.). Never edited.
 - `**/*.generated.ts` — codegen output. Never edited.
 - `__fixtures__/` — test fixtures. Mirror real theme layouts.
-- `__snapshots__/` — Vitest snapshots. Updated only when intentional with `pnpm test -u`.
+- `__snapshots__/` — Vitest snapshots. Updated only when intentional with `vp test -u`.
 
 Generated files carry a `// alambic:generated <pkg>@<version> — do not edit` header. If you find yourself wanting to edit one, the answer is to change the generator.
 

@@ -1,4 +1,5 @@
 import type { CssAdapter, JsAdapter, Preset } from '@alambic/adapters';
+import type { Environment, ResolvedEnvironment } from './env/index.js';
 
 /**
  * User-facing configuration shape, authored in `alambic.config.ts`.
@@ -20,6 +21,27 @@ export interface AlambicConfig {
   preset?: Preset;
   css?: CssAdapter;
   js?: JsAdapter;
+
+  /**
+   * Named target environments — typically `dev`, `preprod`, `prod`.
+   *
+   * Each environment maps to a Shopify store + theme combination. Use
+   * `env('SHOPIFY_DEV_STORE')` to defer resolution to `.env.[name][.local]`
+   * files, which are loaded before this config is consulted.
+   *
+   * The active environment is selected by:
+   *   1. The `--env <name>` CLI flag (if given), or
+   *   2. `defaultEnvironment` (if set), or
+   *   3. None (no Shopify CLI flags appended).
+   */
+  environments?: Record<string, Environment>;
+
+  /**
+   * Default environment name used when `--env` is not passed on the CLI.
+   * Must be a literal string (not env()-derived) so it can be read before
+   * env-specific files are loaded.
+   */
+  defaultEnvironment?: string;
 
   /**
    * Optional dev-mode overrides.
@@ -46,6 +68,11 @@ export interface AlambicPluginOptions extends AlambicConfig {
    * Skip spawning `shopify theme dev`. Useful for tests and CI builds.
    */
   noShopifyCli?: boolean;
+  /**
+   * Active environment name. Set by the CLI based on `--env <name>`. When
+   * absent, the plugin falls back to `defaultEnvironment`.
+   */
+  activeEnvironmentName?: string;
 }
 
 export interface ResolvedAlambicConfig {
@@ -60,4 +87,8 @@ export interface ResolvedAlambicConfig {
     spawnShopifyCli: boolean;
     shopifyCliArgs: ReadonlyArray<string>;
   };
+  /** The name of the active environment, if one is in effect. */
+  activeEnvironmentName: string | null;
+  /** Resolved store/theme/password for the active environment. */
+  activeEnvironment: ResolvedEnvironment;
 }

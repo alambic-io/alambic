@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page_title }}</title>
+    {{ content_for_header }}
     {% render 'alambic-asset', entry: 'layout/theme' %}
-    {% render 'alambic-asset', entry: 'runtime' %}
   </head>
   <body class="min-h-screen bg-white text-neutral-900">
     {{ content_for_layout }}
