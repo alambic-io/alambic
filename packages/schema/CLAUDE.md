@@ -8,7 +8,7 @@
 
 Section schemas in stock Shopify are JSON files with no validation, no types, and no composition primitives. `@alambic/schema` replaces them with a typed DSL. One source of truth produces:
 
-1. The Shopify-format `{section-name}.json` schema written to `dist/theme/sections/`.
+1. A Shopify-format `{% schema %}` block inlined inside `.alambic/theme/sections/{section-name}.liquid` (alongside the section markup).
 2. A TypeScript declaration registered in the `Theme.Section<H>` namespace (via `@alambic/types`).
 3. A Liquid type-hint sidecar consumed by `@alambic/lsp` for autocomplete inside the section's `.liquid` file.
 
@@ -61,7 +61,7 @@ export default section({
 
 This compiles to:
 
-- `dist/theme/sections/product-card.json` in Shopify's exact format.
+- An inlined `{% schema %}` block inside `.alambic/theme/sections/product-card.liquid`, in Shopify's exact format.
 - Type registration: `Theme.Section<'product-card'>` with full `.settings.*` and `.blocks.*` inference.
 
 ## Compilation

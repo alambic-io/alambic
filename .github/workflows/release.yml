@@ -37,8 +37,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm exec vp run -r build
+      - name: Build workspace packages
+        # The `examples/*` workspace has no `build` script (by design)
+        # so pnpm -r silently skips it, which sidesteps the bin-symlink
+        # chicken-and-egg. See ci.yml for the full explanation.
+        run: pnpm -r run build
 
       - name: Create release PR or publish
         uses: changesets/action@v1

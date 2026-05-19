@@ -6,7 +6,7 @@
 
 ## Purpose
 
-A single CLI that wraps the orchestrator (`@alambic/core`), the generators (`@alambic/schema`, `@alambic/types`), the preview server (`@alambic/test-utils`), and the health-check tooling. The CLI is the surface humans (and Claude Code) interact with most.
+A single CLI that wraps the orchestrator (`@alambic/core`), the generators (`@alambic/schema`, `@alambic/types`), the LSP (`@alambic/lsp`), and the health-check tooling. The CLI is the surface humans (and Claude Code) interact with most.
 
 ## Public API
 
@@ -19,48 +19,73 @@ export type { CliCommand, CliContext } from './types';
 
 ## Commands
 
+Shipped:
+
 | Command | Description |
 |---|---|
-| `alambic dev` | Watch + Vite + Shopify CLI proxy. The main dev loop. |
-| `alambic build` | Production build → `dist/theme/`. |
-| `alambic build --push` | Build then push via `shopify theme push --json`. |
-| `alambic build --report` | Build and emit `dist/alambic-report.json` with budgets, asset graph. |
-| `alambic new section <name>` | Scaffold `src/sections/<name>/` from template. |
+| `alambic dev` | Boot Vite dev server + spawn `shopify theme dev` reading from `.alambic/theme/`. Live-syncs `src/` → `.alambic/theme/`. |
+| `alambic build` | One-shot build into `.alambic/theme/` (staging copy + Vite assets + manifest snippet). Logs a per-template stats table. `--report` writes `.alambic/alambic-report.json`. |
+| `alambic push [--env <name>]` | Build then `shopify theme push --path .alambic/theme --store <s> --theme <id>`. Refuses without resolved store + themeId. |
+| `alambic pull [--env <name>] [--into <name>]` | Pull merchant-owned JSON (templates, `config/settings_data.json`, section groups) from `--env`. Default target: local `src/`. With `--into <name>`: pull → push directly to that env's remote theme without touching `src/`. `--only <patterns>` overrides the default pattern set; `--dry-run` prints the shopify commands without running them. |
+| `alambic types` | One-shot generation of `.alambic/types/index.d.ts` from `sections/*/schema.ts` and `blocks/*/schema.ts`. |
+| `alambic schema check` | Validate every section/block schema without building. |
+| `alambic new section <name>` | Scaffold `src/sections/<name>/{index.liquid,schema.ts}`. Add `--with-client` for `client.ts` + `index.css`. |
+| `alambic new block <name>` | Scaffold `src/blocks/<name>/{index.liquid,schema.ts}` (a Shopify 2.0 theme block). |
 | `alambic new snippet <name>` | Scaffold `src/snippets/<name>.liquid`. |
-| `alambic new template <name>` | Scaffold `src/templates/<name>.json`. |
-| `alambic types` | One-shot type generation. No watch. |
-| `alambic types --refresh` | Invalidate Admin API cache and regenerate. |
-| `alambic schema check` | Validate all section schemas without building. |
+| `alambic new template <name>` | Scaffold `src/templates/<name>.json` (Online Store 2.0). Accepts digit-leading + underscored names + dot-suffixed variants (e.g. `404`, `gift_card`, `product.alternate`). |
+| `alambic lsp` | Start the Alambic Liquid language server over stdio. Editor-agnostic; LSP/JSON-RPC. Identical to running the `alambic-lsp` binary that ships with `@alambic/lsp`. See `docs/lsp-setup.md` for per-editor wiring. |
 | `alambic doctor` | Workspace + theme health check. |
-| `alambic preview` | Run the section preview server (`@alambic/test-utils`). |
-| `alambic upgrade` | Upgrade Alambic packages in the consumer project to the latest matching range. |
+| `alambic --version` | Print the CLI version. |
 
-Every command supports `--json` for machine-readable output, used by CI and Claude Code.
+Planned (later phases):
+
+| Command | Description | Phase |
+|---|---|---|
+| `alambic types --refresh` | Invalidate the Admin API type cache and regenerate. | when Admin API integration lands |
+| `alambic upgrade` | Upgrade Alambic packages in the consumer project. | future |
+
+Every command will support `--json` for machine-readable output (used by CI and Claude Code). Today only `doctor` honors it.
 
 ## Flag conventions
 
-- `--theme-root <path>` — Override theme source root (default: `./src`).
-- `--config <path>` — Override `alambic.config.ts` location.
-- `--verbose` — Equivalent to `ALAMBIC_LOG=debug`.
-- `--quiet` — Suppress non-error output.
-- `--json` — Machine-readable output.
-- `--no-color` — Disable ANSI colors.
+Shipped today:
+- `--config <path>` — Override `alambic.config.ts` location. (dev, build, push, pull, types, schema check, new)
+- `--env <name>` — Active environment from `environments` in config. (dev, build, push, pull)
+- `--into <name>` — For `pull`: target env to push pulled files to instead of writing into `src/`.
+- `--only <patterns>` — For `pull`: comma-separated Shopify CLI `--only` patterns.
+- `--no-shopify-cli` — Skip spawning the Shopify CLI subprocess. (dev)
+- `--no-build` — For `push`: skip the pre-push build step.
+- `--with-client` — For `new section`: also create `client.ts` + `index.css`.
+- `--report` — For `build`: write `.alambic/alambic-report.json` with per-template stats and budget breaches.
+- `--dry-run` — For `pull`: print the shopify commands without executing them.
+- `--json` — Machine-readable output. Supported on: `doctor`, `schema check`, `types`, `new section|block|snippet|template`. Not on `build` (use `--report` instead, which writes a richer JSON file) or `push`/`pull` (the Shopify CLI owns stdout; wrapping in JSON would corrupt its output).
+
+Global (apply to every subcommand via a `program.hook('preAction')`):
+- `--theme-root <path>` — Override theme source root. Flag > `alambic.config.ts` > `./src`. Implemented via the `ALAMBIC_THEME_ROOT` env var so any reader of `resolveConfig()` (the plugin, the CLI, tests) picks it up uniformly.
+- `--verbose` — Set logger level to `debug`. Applies to the orchestrator's plugin logs (`[core]`, `[staging]`, etc.); deliverable output from CLI commands is unaffected.
+- `--quiet` — Set logger level to `error`. Same scope as `--verbose`: silences plugin chatter, not the command's primary output.
+- `--no-color` — Disable ANSI colors in logger output. Also sets `NO_COLOR=1` / `FORCE_COLOR=0` so downstream tools (consola, chalk) honor it.
 
 ## `alambic doctor`
 
-The most important command. Single source of truth for "is my workspace healthy?"
+Single source of truth for "is my workspace healthy?". Exit code = 1 on any `fail`, 0 otherwise. Warnings don't fail.
 
-Checks (all gated, exit code = 1 on any failure):
+Shipped checks:
 
-1. **Versions** — Node, pnpm, Shopify CLI all on supported versions.
-2. **Workspace** — `pnpm-workspace.yaml` lists all packages under `packages/*`.
-3. **Dependency graph** — No cycles. Layer rules respected (adapters depends on nothing, etc.).
-4. **CLAUDE.md sync** — Each package's CLAUDE.md "Public API" section matches actual exports.
-5. **Generated files** — No hand-edits (content hash matches).
-6. **Config** — `alambic.config.ts` validates against the Zod schema.
-7. **Type-gen freshness** — `.alambic/types/` is not older than its sources.
-8. **Shopify CLI** — `shopify --version` succeeds; auth is configured.
-9. **Theme structure** — Required directories present (sections, snippets, templates, config, locales, layout).
+1. **Versions** — Node (≥22.12), pnpm (warn if <9), Shopify CLI (fail if missing).
+2. **Config** — `alambic.config.{ts,mjs,js}` exists and loads; counts environments and notes the active one.
+3. **Gitignore** — `.gitignore` exists and includes `.alambic` (or `.alambic/`, or a prefix match). Warns otherwise. Skipped when there's no config (monorepo root case).
+4. **Shopifyignore** — `.shopifyignore` exists in `themeRoot` once the project has merchant-editable JSON (`templates/*.json`). Skipped silently for brand-new projects with no templates.
+5. **Theme structure** — Required dirs (`layout/`, `sections/`, `templates/`, `config/`) exist under `themeRoot`; optional dirs (`snippets`, `locales`, `blocks`, `assets`) noted.
+6. **Schema sources** — Flags sections / theme blocks that declare *both* a `schema.ts` and an inline `{% schema %}` block in `index.liquid` (the inliner overwrites the inline block, silently).
+7. **Environments** — Active env's `store` + `themeId` resolve through `env()` references (warn on missing themeId; fail on missing store).
+8. **Types freshness** — `.alambic/types/index.d.ts` is at least as fresh as the most recent `schema.ts`.
+
+Planned (when the relevant feature lands):
+- Workspace graph cycles / layer rules — Phase 5+
+- `// alambic:generated` file-hash verification — Phase 5+
+- CLAUDE.md/public-API drift detection — Phase 6 LSP
+- Shopify CLI auth status — when there's a way to interrogate it without prompting
 
 Output:
 
@@ -100,56 +125,56 @@ Theme
 
 ```
 src/
-├── index.ts                # CLI entry, registers commands
-├── run.ts                  # Programmatic entry
+├── index.ts                # CLI entry (shebang + run())
+├── run.ts                  # Programmatic entry, command registration
+├── version.ts              # Generated VERSION constant
 ├── commands/
 │   ├── dev.ts
 │   ├── build.ts
-│   ├── new-section.ts
-│   ├── new-snippet.ts
-│   ├── new-template.ts
+│   ├── push.ts
+│   ├── pull.ts             # Pull merchant-owned JSON; optional --into for env-sync
 │   ├── types.ts
 │   ├── schema-check.ts
-│   ├── doctor/
-│   │   ├── index.ts
-│   │   ├── checks/
-│   │   │   ├── versions.ts
-│   │   │   ├── workspace.ts
-│   │   │   ├── graph.ts
-│   │   │   ├── claude-md-sync.ts
-│   │   │   ├── generated-files.ts
-│   │   │   ├── config.ts
-│   │   │   ├── types-freshness.ts
-│   │   │   ├── shopify-cli.ts
-│   │   │   └── theme-structure.ts
-│   │   └── format.ts
-│   ├── preview.ts
-│   └── upgrade.ts
-├── output/
-│   ├── consola.ts          # Human-friendly output
-│   └── json.ts             # --json mode
+│   ├── new.ts              # Unified `new <kind> <name>` (section|block|snippet|template)
+│   └── doctor/
+│       ├── index.ts
+│       ├── types.ts
+│       ├── format.ts
+│       └── checks/
+│           ├── versions.ts
+│           ├── config.ts
+│           ├── gitignore.ts
+│           ├── shopifyignore.ts
+│           ├── theme-structure.ts
+│           ├── schema-source.ts
+│           ├── environment.ts
+│           └── types-freshness.ts
 ├── scaffolds/
-│   ├── section.ts
-│   ├── snippet.ts
-│   └── template.ts
-└── types.ts
+│   ├── section.ts          # Section index.liquid + schema.ts + optional client.ts/index.css
+│   ├── block.ts            # Theme block templates
+│   ├── snippet.ts          # Snippet template
+│   ├── template.ts         # JSON template stub
+│   └── util.ts             # validateName, validateTemplateName, writeScaffold, ...
+├── internal/
+│   └── load-config.ts      # jiti-backed alambic.config.ts loader
+└── output/
+    └── consola.ts          # Human-friendly output (json mode lives inline in commands today)
 ```
 
 ## Dependencies
 
-- `@alambic/core` — dev server, build.
+- `@alambic/core` — dev server, build, config loader.
 - `@alambic/types` — type-gen for `alambic types` command.
 - `@alambic/schema` — `alambic schema check`.
-- `@alambic/test-utils` — `alambic preview`.
 - `commander` — CLI argument parsing.
 - `consola` — output.
+- `jiti` — runtime TS loader for `alambic.config.ts`.
 
 ## Testing
 
-- Each command has integration tests in `test/commands/<name>.test.ts`.
-- The doctor check suite is exhaustively tested against fixture workspaces with intentional defects.
-- Snapshot tests for `--json` output of every command.
-- Smoke test in CI: `alambic doctor` on the actual workspace must exit 0.
+- Each command has tests next to it: `commands/<name>.test.ts`.
+- Doctor checks are tested individually under `commands/doctor/checks/<name>.test.ts`, plus an integration test in `commands/doctor/index.test.ts` against synthetic temp workspaces.
+- Smoke test: `alambic doctor` on the example theme exits 0 (1 known warning for missing generated types).
 
 ## Claude Code notes
 

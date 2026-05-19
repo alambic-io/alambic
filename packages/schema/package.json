@@ -1,0 +1,51 @@
+{
+  "name": "@alambic/schema",
+  "version": "0.0.0",
+  "description": "TS DSL for Shopify section + theme block schemas. Compiles to inlined `{% schema %}` blocks.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./compile": {
+      "types": "./dist/compile.d.mts",
+      "import": "./dist/compile.mjs"
+    },
+    "./discover": {
+      "types": "./dist/discover.d.mts",
+      "import": "./dist/discover.mjs"
+    },
+    "./locales": {
+      "types": "./dist/locales.d.mts",
+      "import": "./dist/locales.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "jiti": "^2.7.0",
+    "tinyglobby": "^0.2.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "vite-plus": "^0.1.20",
+    "vitest": "^4.1.6"
+  }
+}

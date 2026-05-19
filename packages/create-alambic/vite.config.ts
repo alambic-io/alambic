@@ -1,0 +1,20 @@
+import { defineConfig } from 'vite-plus';
+
+export default defineConfig({
+  pack: {
+    entry: {
+      index: 'src/index.ts',
+      cli: 'src/cli.ts',
+    },
+    format: ['esm'],
+    platform: 'node',
+    target: 'node22',
+    dts: true,
+    sourcemap: true,
+    clean: true,
+    hash: false,
+  },
+  test: {
+    include: ['src/**/*.test.ts'],
+  },
+});

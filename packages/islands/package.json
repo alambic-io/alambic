@@ -1,0 +1,43 @@
+{
+  "name": "@alambic/islands",
+  "version": "0.0.0",
+  "description": "Per-section JS chunk loading via <alambic-island> custom element. Framework-agnostic.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.mts",
+      "import": "./dist/runtime.mjs"
+    },
+    "./snippets": {
+      "types": "./dist/snippets.d.mts",
+      "import": "./dist/snippets.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "happy-dom": "^15.11.7",
+    "vite-plus": "^0.1.20",
+    "vitest": "^4.1.6"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "@alambic/lsp",
+  "version": "0.0.0",
+  "description": "Liquid Language Server for Alambic-flavored Shopify themes. Editor-agnostic, ships over stdio.",
+  "license": "MIT",
+  "bin": {
+    "alambic-lsp": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@alambic/schema": "workspace:*",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "vscode-uri": "^3.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "vite-plus": "^0.1.20",
+    "vitest": "^4.1.6"
+  }
+}

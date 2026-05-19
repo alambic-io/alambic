@@ -1,0 +1,14 @@
+id = "alambic"
+name = "Alambic"
+version = "0.1.0"
+schema_version = 1
+authors = ["Arthur Brunot <arthur.brunot.pro@gmail.com>"]
+description = "Schema-aware Liquid Language Server for Alambic-flavored Shopify themes"
+repository = "https://github.com/arthurbrunot/alambic"
+
+# We declare a language server, not a language. Liquid syntax + tree-sitter
+# is expected to come from a separate "Liquid" extension that the user
+# already has installed — we layer alambic-lsp on top of it.
+[language_servers.alambic-lsp]
+name = "Alambic LSP"
+languages = ["Liquid"]

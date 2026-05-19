@@ -8,7 +8,7 @@ If you only want to use the default Tailwind v4 + Alpine stack, you don't need t
 
 ## 1. The contract, in one paragraph
 
-A preset is a pair `{ css: CssAdapter, js: JsAdapter }`. Each adapter is an object implementing a small, stable interface defined in `@alambic/adapters`. Alambic core calls the adapter's methods at well-defined points in the dev/build lifecycle. An adapter is valid if and only if it passes the adapter conformance test suite shipped from `@alambic/test-utils`.
+A preset is a pair `{ css: CssAdapter, js: JsAdapter }`. Each adapter is an object implementing a small, stable interface defined in `@alambic/adapters`. Alambic core calls the adapter's methods at well-defined points in the dev/build lifecycle. An adapter is valid if and only if it passes the adapter conformance test suite shipped from `@alambic/adapters/conformance`.
 
 ## 2. Interfaces
 
@@ -59,7 +59,7 @@ export interface JsAdapter {
 export interface AdapterContext {
   readonly mode: 'dev' | 'build';
   readonly themeRoot: string;        // absolute path to source theme
-  readonly outputRoot: string;       // absolute path to dist/theme
+  readonly outputRoot: string;       // absolute path to .alambic/theme
   readonly sections: ReadonlyArray<CompiledSection>;
   readonly settings: ThemeSettings;
   readonly logger: Logger;
@@ -111,25 +111,40 @@ Adapters must be **pure** with respect to filesystem side effects outside their 
 
 ## 4. Conformance test suite
 
-Every adapter must pass the suite in `@alambic/test-utils/conformance`. The suite covers:
+Every adapter must pass the suite shipped from `@alambic/adapters/conformance`. The current suite is structural — it asserts each adapter method exists, returns the right shape, and behaves deterministically:
 
-- Plugin injection produces a buildable Vite config.
-- Content sources include `.liquid`, `.ts`, `.tsx` (or whatever the adapter declares).
-- `emitTokens` is deterministic and produces valid CSS.
-- `extractCritical` returns a strict subset of the input CSS.
-- `discoverEntries` returns entries with stable IDs.
-- `hydrationRuntime` resolves and is loadable.
-- Generated component bindings type-check.
-- A full build against the conformance fixture theme succeeds and produces valid theme output.
+- `vitePlugins(ctx)` returns an array of named Vite plugins.
+- `contentSources(ctx)` returns an array of strings (no non-string elements).
+- `emitTokens(settings)` returns a string and is deterministic for identical input.
+- `extractCritical(html, css)` returns a string.
+- `discoverEntries(ctx)` returns `EntryPoint[]` (each with string `id` + `file`).
+- `hydrationRuntime` is a non-empty string.
+- `generateComponentBindings(section)` returns a string.
+
+Deeper checks (full builds against a fixture theme, type-checking the generated bindings, etc.) live in `packages/preset-tailwind-alpine/src/preset.test.ts` rather than the conformance suite itself — the suite stays cheap so third-party adapters can run it without bringing up a real Vite build.
 
 To run the suite against your adapter:
 
 ```ts
 // my-adapter/test/conformance.test.ts
-import { runConformanceSuite } from '@alambic/test-utils/conformance';
+import { describe, test } from 'vitest';
+import {
+  cssAdapterCases,
+  jsAdapterCases,
+  makeStubContext,
+} from '@alambic/adapters/conformance';
 import { myPreset } from '../src';
 
-runConformanceSuite(myPreset);
+describe('my-preset conformance', () => {
+  const preset = myPreset();
+  const ctx = makeStubContext({ themeRoot: '/tmp/conformance-theme' });
+  for (const c of cssAdapterCases) {
+    test(`css / ${c.name}`, () => c.run(preset.css, ctx));
+  }
+  for (const c of jsAdapterCases) {
+    test(`js / ${c.name}`, () => c.run(preset.js, ctx));
+  }
+});
 ```
 
 ## 5. Reference: `preset-tailwind-alpine`

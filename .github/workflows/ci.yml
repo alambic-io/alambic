@@ -31,16 +31,46 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        # The "Failed to create bin at .../dist/cli.mjs" warnings on this
+        # step are expected on a cold checkout — pnpm tries to symlink
+        # workspace bins before any package has been built. Nothing in CI
+        # uses those bins (the example workspace deliberately has no
+        # build/dev scripts), so the warnings are harmless.
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        # Must run BEFORE Check. Each `@alambic/*` package publishes its
+        # public API via `dist/*.d.mts` (per its `exports` map), so the
+        # typechecker can't resolve `@alambic/adapters`, `@alambic/manifest`,
+        # etc. until their dist/ folders exist.
+        #
+        # `pnpm -r` runs scripts in topological dependency order. The
+        # `examples/*` workspace has no `build` script (by design — see
+        # `examples/tailwind-alpine-theme/package.json`), so pnpm silently
+        # skips it and we avoid the bin-symlink chicken-and-egg.
+        run: pnpm -r run build
 
       - name: Check (fmt + lint + typecheck)
         run: pnpm exec vp check
 
-      - name: Build
-        run: pnpm exec vp run -r build
-
       - name: Test
         run: pnpm exec vp run -r test
 
-      - name: Doctor
-        run: pnpm exec alambic doctor
+      - name: Install Shopify CLI
+        # Doctor's `Shopify CLI: fail if missing` check needs the
+        # binary on PATH. The runner image doesn't ship it.
+        run: npm install -g @shopify/cli@latest
+
+      - name: Doctor (versions smoke from workspace root)
+        # Run at workspace root: no alambic.config.ts here, so only the
+        # Versions check fires. That's enough to catch shopify-cli /
+        # node / pnpm version regressions in CI. A richer doctor sweep
+        # against the example theme would need `.env` files we don't
+        # ship — keep that for local dogfooding.
+        #
+        # Invoke the built file directly because `pnpm install` couldn't
+        # wire the `alambic` bin into `node_modules/.bin/` on the cold
+        # checkout (dist/cli.mjs didn't exist yet). The Build step has
+        # since produced dist/cli.mjs; calling it via `node` sidesteps
+        # the symlink dance.
+        run: node packages/cli/dist/cli.mjs doctor

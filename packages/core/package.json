@@ -1,0 +1,57 @@
+{
+  "name": "@alambic/core",
+  "version": "0.0.0",
+  "description": "Alambic core — Vite plugin entry, dev server orchestration, build pipeline.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.mts",
+      "import": "./dist/errors.mjs"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.mts",
+      "import": "./dist/logger.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@alambic/adapters": "workspace:*",
+    "@alambic/islands": "workspace:*",
+    "@alambic/manifest": "workspace:*",
+    "@alambic/schema": "workspace:*",
+    "chokidar": "^4.0.3",
+    "consola": "^3.4.2",
+    "jiti": "^2.7.0",
+    "tinyglobby": "^0.2.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "vite": "^8.0.12",
+    "vite-plus": "^0.1.20",
+    "vitest": "^4.1.6"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  }
+}

@@ -126,7 +126,7 @@ This package does **not** depend on any other `@alambic/*` package at runtime. I
 ## Testing
 
 - Unit tests for substitution and template discovery.
-- Integration tests: scaffold each template into a temp directory, run `pnpm install && pnpm typecheck && pnpm build` against it, assert success.
+- Integration tests: scaffold each template into a temp directory, run `pnpm install && vp check && pnpm build` against it, assert success.
 - Snapshot tests for generated file lists per template.
 
 ## Claude Code notes

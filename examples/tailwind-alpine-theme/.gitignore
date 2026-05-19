@@ -1,0 +1,6 @@
+node_modules/
+.alambic/
+
+# Env files: only `.local` variants are secret
+.env.local
+.env.*.local

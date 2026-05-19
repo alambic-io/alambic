@@ -103,8 +103,7 @@ None. This package depends on nothing.
 It is consumed by:
 - `@alambic/core` — invokes adapter methods at lifecycle points.
 - `@alambic/preset-tailwind-alpine` — implements the contract.
-- `@alambic/test-utils` — provides the conformance suite.
-- Any third-party adapter package.
+- Any third-party adapter package — imports types from `@alambic/adapters` and the conformance suite from `@alambic/adapters/conformance`.
 
 ## Versioning
 
@@ -117,11 +116,8 @@ Between major versions:
 
 ## Testing
 
-Contract types are tested via:
-- `tsd` type-level tests that assert the interfaces are stable.
-- A no-op adapter in `__fixtures__/noop-adapter/` that implements every method as the simplest valid stub. The conformance suite in `@alambic/test-utils` is run against this fixture in CI as a sanity check.
-
-There are no runtime unit tests in this package because there's no runtime code.
+- The conformance suite (`src/conformance.ts`) is the contract test. Every shipped check has a paired self-test in `src/conformance.test.ts` that exercises it against the bundled no-op adapters (`noopCssAdapter`, `noopJsAdapter`) — those are also exported so third-party adapter authors can start from a known-good baseline.
+- The reference preset (`@alambic/preset-tailwind-alpine`) wires the same suite into its own tests; a regression in the contract or in the preset shows up there too.
 
 ## Claude Code notes
 

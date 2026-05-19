@@ -1,0 +1,47 @@
+{
+  "name": "@alambic/adapters",
+  "version": "0.0.0",
+  "description": "CSS + JS adapter contracts for Alambic. Interfaces and types only — no implementations.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./conformance": {
+      "types": "./dist/conformance.d.mts",
+      "import": "./dist/conformance.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "vite": "^8.0.12",
+    "vite-plus": "^0.1.20",
+    "vitest": "^4.1.6"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  }
+}

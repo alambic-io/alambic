@@ -31,11 +31,26 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "commander": "^14.0.3"
+    "@alambic/core": "workspace:*",
+    "@alambic/lsp": "workspace:*",
+    "@alambic/schema": "workspace:*",
+    "@alambic/types": "workspace:*",
+    "commander": "^14.0.3",
+    "jiti": "^2.7.0",
+    "tinyglobby": "^0.2.10"
   },
   "devDependencies": {
     "@types/node": "^22.19.19",
+    "vite": "^8.0.12",
     "vite-plus": "^0.1.20",
     "vitest": "^4.1.6"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   }
 }

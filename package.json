@@ -16,7 +16,7 @@
     "alambic": "alambic",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "vp run -r build && changeset publish"
+    "release": "pnpm -r run build && changeset publish"
   },
   "devDependencies": {
     "@alambic/cli": "workspace:*",

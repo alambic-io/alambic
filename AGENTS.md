@@ -27,11 +27,11 @@ Do **not** open files in unrelated packages unless tests fail there.
 ## 2. Mental model for the file system
 
 - `src/` — source. Everything in `src/` is authored.
-- `dist/` — build output. Never edited.
-- `**/.alambic/` — generated artifacts emitted by Alambic itself when running against a consumer theme. Never edited.
+- `dist/` — alambic package build output (per `vp pack`). Never edited.
+- `**/.alambic/` — generated artifacts emitted by Alambic against a consumer theme (`.alambic/theme/`, `.alambic/types/`, etc.). Never edited.
 - `**/*.generated.ts` — codegen output. Never edited.
 - `__fixtures__/` — test fixtures. Mirror real theme layouts.
-- `__snapshots__/` — Vitest snapshots. Updated only when intentional with `pnpm test -u`.
+- `__snapshots__/` — Vitest snapshots. Updated only when intentional with `vp test -u`.
 
 Generated files carry a `// alambic:generated <pkg>@<version> — do not edit` header. If you find yourself wanting to edit one, the answer is to change the generator.
 
@@ -67,7 +67,7 @@ Section presets live in `packages/schema/src/presets/`. Each preset is a functio
 1. Read `docs/adapters.md` and `packages/adapters/CLAUDE.md`.
 2. Adapter packages live outside the monorepo by default. Inside the monorepo, only `preset-tailwind-alpine` exists as the reference.
 3. To add a new in-repo preset (e.g. `preset-unocss-stimulus`), use `/add-package` then implement against the contracts in `@alambic/adapters`.
-4. The new preset must pass the **adapter conformance test suite** exported from `@alambic/test-utils`. This suite is the contract.
+4. The new preset must pass the **adapter conformance test suite** exported from `@alambic/adapters/conformance`. This suite is the contract.
 
 ### 3.4 Change a public API
 
@@ -107,7 +107,7 @@ Type generators live in `packages/types/src/generators/`. Each generator is a pu
 2. Generators must be deterministic. Same input → byte-identical output.
 3. Add a fixture under `packages/types/__fixtures__/<generator>/`.
 4. Snapshot test the output.
-5. Run `pnpm --filter examples/tailwind-alpine-theme alambic types` and verify the regenerated `.alambic/types/` looks right.
+5. From `examples/tailwind-alpine-theme/`, run `pnpm exec alambic types` and verify the regenerated `.alambic/types/` looks right.
 
 ## 4. Definition of done
 
