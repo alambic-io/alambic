@@ -67,4 +67,10 @@ jobs:
         # node / pnpm version regressions in CI. A richer doctor sweep
         # against the example theme would need `.env` files we don't
         # ship — keep that for local dogfooding.
-        run: pnpm exec alambic doctor
+        #
+        # Invoke the built file directly because `pnpm install` couldn't
+        # wire the `alambic` bin into `node_modules/.bin/` on the cold
+        # checkout (dist/cli.mjs didn't exist yet). The Build step has
+        # since produced dist/cli.mjs; calling it via `node` sidesteps
+        # the symlink dance.
+        run: node packages/cli/dist/cli.mjs doctor
