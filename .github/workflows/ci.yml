@@ -51,7 +51,11 @@ jobs:
         # dist/cli.mjs` doesn't exist yet — hence the warnings on the
         # Install step. The next step re-runs install (cheap, no fetches)
         # so the symlinks land, then we build the example end-to-end.
-        run: pnpm exec vp run --filter '!@examples/*' -r build
+        #
+        # `pnpm -r` runs scripts in topological dependency order, so
+        # @alambic/adapters builds before @alambic/core, etc. Each
+        # package's `build` script is `vp pack`.
+        run: pnpm -r --filter '!@examples/*' run build
 
       - name: Rehydrate bin symlinks
         # Now that every workspace bin's `dist/*.mjs` exists, re-install
