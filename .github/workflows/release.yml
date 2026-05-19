@@ -38,11 +38,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build workspace packages
-        # Excludes `@examples/*`: see ci.yml for the same chicken-and-egg
-        # (the example's `build` is `alambic build`, which needs the
-        # alambic bin symlinked, which needs @alambic/cli built first).
-        # We don't need the example built for the publish flow anyway.
-        run: pnpm -r --filter '!@examples/*' run build
+        # The `examples/*` workspace has no `build` script (by design)
+        # so pnpm -r silently skips it, which sidesteps the bin-symlink
+        # chicken-and-egg. See ci.yml for the full explanation.
+        run: pnpm -r run build
 
       - name: Create release PR or publish
         uses: changesets/action@v1

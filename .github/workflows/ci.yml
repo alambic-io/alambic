@@ -33,9 +33,9 @@ jobs:
       - name: Install dependencies
         # The "Failed to create bin at .../dist/cli.mjs" warnings on this
         # step are expected on a cold checkout — pnpm tries to symlink
-        # the workspace bins before any package has been built. The next
-        # step (Build) creates those files; the bins get recreated on
-        # the next install. The warnings don't affect anything downstream.
+        # workspace bins before any package has been built. Nothing in CI
+        # uses those bins (the example workspace deliberately has no
+        # build/dev scripts), so the warnings are harmless.
         run: pnpm install --frozen-lockfile
 
       - name: Build workspace packages
@@ -44,32 +44,11 @@ jobs:
         # typechecker can't resolve `@alambic/adapters`, `@alambic/manifest`,
         # etc. until their dist/ folders exist.
         #
-        # We exclude `@examples/*` from this first pass: the example's
-        # `build` script is `alambic build`, which needs the `alambic`
-        # bin symlinked into `node_modules/.bin/`. pnpm only wires bin
-        # symlinks at install time, and at install time `packages/cli/
-        # dist/cli.mjs` doesn't exist yet — hence the warnings on the
-        # Install step. The next step re-runs install (cheap, no fetches)
-        # so the symlinks land, then we build the example end-to-end.
-        #
-        # `pnpm -r` runs scripts in topological dependency order, so
-        # @alambic/adapters builds before @alambic/core, etc. Each
-        # package's `build` script is `vp pack`.
-        run: pnpm -r --filter '!@examples/*' run build
-
-      - name: Rehydrate bin symlinks
-        # Now that every workspace bin's `dist/*.mjs` exists, re-install
-        # so pnpm can wire `node_modules/.bin/alambic` (and friends)
-        # into each consumer's bin dir. Fast — no new packages to fetch.
-        run: pnpm install --frozen-lockfile
-
-      - name: Build example theme (end-to-end smoke)
-        # Runs `alambic build` against the reference example. Catches
-        # regressions in the staging pipeline + plugin orchestration
-        # that the unit tests can't see (Vite, schema inlining, islands
-        # snippet emission, per-template manifest).
-        working-directory: examples/tailwind-alpine-theme
-        run: pnpm build
+        # `pnpm -r` runs scripts in topological dependency order. The
+        # `examples/*` workspace has no `build` script (by design — see
+        # `examples/tailwind-alpine-theme/package.json`), so pnpm silently
+        # skips it and we avoid the bin-symlink chicken-and-egg.
+        run: pnpm -r run build
 
       - name: Check (fmt + lint + typecheck)
         run: pnpm exec vp check

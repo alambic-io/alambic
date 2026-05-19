@@ -114,7 +114,7 @@ For common tasks, here's the minimum read path:
 
 ### A type error shows up only in a consumer
 
-- Run `pnpm --filter examples/tailwind-alpine-theme typecheck`. Examples are part of the typecheck graph.
+- Run `vp check` from the monorepo root. Examples are part of the typecheck graph.
 - The fix usually belongs in `packages/types` or in the offending package's `index.ts` exports.
 
 ### `alambic doctor` reports a warning
@@ -137,10 +137,13 @@ A `CLAUDE.md` that has drifted from reality is worse than no `CLAUDE.md`. Treat 
 
 `examples/tailwind-alpine-theme/` is part of the test surface. Changes that break it are not done, even if all unit tests pass.
 
+The example workspace deliberately has **no** `build` / `dev` scripts (avoids a bin-symlink chicken-and-egg with `pnpm -r run build`). Drive it directly:
+
 ```bash
-pnpm --filter examples/tailwind-alpine-theme dev      # Manual smoke test
-pnpm --filter examples/tailwind-alpine-theme build    # Should succeed
-pnpm --filter examples/tailwind-alpine-theme typecheck
+cd examples/tailwind-alpine-theme
+pnpm exec alambic dev      # manual smoke test (needs `shopify auth login`)
+pnpm exec alambic build    # should succeed
+pnpm exec alambic types    # regenerate .alambic/types/
 ```
 
 If you change the public API, update `examples/` in the same PR.

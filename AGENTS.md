@@ -107,7 +107,7 @@ Type generators live in `packages/types/src/generators/`. Each generator is a pu
 2. Generators must be deterministic. Same input → byte-identical output.
 3. Add a fixture under `packages/types/__fixtures__/<generator>/`.
 4. Snapshot test the output.
-5. Run `pnpm --filter examples/tailwind-alpine-theme alambic types` and verify the regenerated `.alambic/types/` looks right.
+5. From `examples/tailwind-alpine-theme/`, run `pnpm exec alambic types` and verify the regenerated `.alambic/types/` looks right.
 
 ## 4. Definition of done
 

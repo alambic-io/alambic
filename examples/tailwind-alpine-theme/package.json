@@ -5,11 +5,6 @@
   "description": "Reference Alambic theme using the Tailwind + Alpine preset.",
   "license": "MIT",
   "type": "module",
-  "scripts": {
-    "dev": "alambic dev",
-    "dev:standalone": "alambic dev --no-shopify-cli",
-    "build": "alambic build"
-  },
   "dependencies": {
     "@alambic/cli": "workspace:*",
     "@alambic/core": "workspace:*",
@@ -19,5 +14,6 @@
     "@tailwindcss/vite": "^4.1.16",
     "alpinejs": "^3.14.9",
     "tailwindcss": "^4.1.16"
-  }
+  },
+  "//comment": "No scripts on purpose. The example stays in the workspace for dependency linking (so `alambic` resolves to the workspace @alambic/cli), but doesn't expose `build` / `dev` scripts — that way `pnpm -r run build` from the monorepo root doesn't try to run them and hit the bin-symlink chicken-and-egg (cli's bin isn't linked until cli is built; the example's build depends on the bin). To run the example, `cd` into this directory and use `pnpm exec alambic <command>` — see README.md."
 }

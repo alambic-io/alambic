@@ -8,14 +8,17 @@ Copy `.env.example` to `.env.dev.local` (and `.env.preprod.local`, `.env.prod.lo
 
 ## Run
 
-From the monorepo root:
+From inside this directory:
 
 ```bash
-pnpm --filter @examples/tailwind-alpine-theme dev                   # uses defaultEnvironment ('dev')
-pnpm --filter @examples/tailwind-alpine-theme dev -- --env preprod  # switch environments
-pnpm --filter @examples/tailwind-alpine-theme dev:standalone        # Vite only, no Shopify CLI
-pnpm --filter @examples/tailwind-alpine-theme build                 # → .alambic/theme/
+pnpm exec alambic dev                       # uses defaultEnvironment ('dev')
+pnpm exec alambic dev --env preprod         # switch environments
+pnpm exec alambic dev --no-shopify-cli      # Vite only, no Shopify CLI
+pnpm exec alambic build                     # → .alambic/theme/
+pnpm exec alambic types                     # regenerate .alambic/types/index.d.ts
 ```
+
+The example deliberately doesn't expose `pnpm dev` / `pnpm build` scripts — see the comment in `package.json`. Calling `pnpm exec alambic …` directly avoids a bin-symlink chicken-and-egg in the monorepo's recursive build.
 
 `dev` requires a Shopify dev store and the [Shopify CLI](https://shopify.dev/docs/themes/tools/cli) installed on `$PATH`. Run `shopify auth login` once to seed the OAuth session.
 
