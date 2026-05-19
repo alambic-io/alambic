@@ -72,16 +72,24 @@ export function resolveConfig(
     activeName !== null ? input.environments?.[activeName] : undefined,
   );
 
+  // `ALAMBIC_THEME_ROOT` is set by the CLI's `--theme-root <path>` flag.
+  // Flag > config > default — the convention is that an explicit CLI
+  // override wins over an `alambic.config.ts` value.
+  const themeRootOverride = process.env['ALAMBIC_THEME_ROOT'];
+  const themeRoot = themeRootOverride ?? input.themeRoot ?? DEFAULTS.themeRoot;
+
   return {
-    themeRoot: resolve(cwd, input.themeRoot ?? DEFAULTS.themeRoot),
+    themeRoot: resolve(cwd, themeRoot),
     output: resolve(cwd, input.output ?? DEFAULTS.output),
     preset,
     css,
     js,
+    budgets: input.budgets ?? null,
     dev: {
       vitePort: input.dev?.vitePort ?? DEFAULTS.vitePort,
       shopifyPort: input.dev?.shopifyPort ?? DEFAULTS.shopifyPort,
       spawnShopifyCli: input.dev?.spawnShopifyCli ?? true,
+      openInBrowser: input.dev?.openInBrowser ?? true,
       shopifyCliArgs: input.dev?.shopifyCliArgs ?? [],
     },
     activeEnvironmentName: activeName,

@@ -1,0 +1,6 @@
+# Files owned by the merchant via the theme editor — pulled, not pushed.
+# Excluding these prevents `shopify theme push` from overwriting customer
+# changes (section reordering, settings values, section-group edits).
+templates/*.json
+config/settings_data.json
+sections/*.json

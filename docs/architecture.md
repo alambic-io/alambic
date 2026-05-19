@@ -21,10 +21,8 @@ Alambic is a stack of layers. Each layer depends only on layers below it.
 │  Feature packages                                       │
 │  ├ @alambic/schema     (TS → JSON schema + types)       │
 │  ├ @alambic/types      (theme-wide type gen)            │
-│  ├ @alambic/hmr        (section-aware HMR)              │
-│  ├ @alambic/islands    (hydration directives)           │
-│  ├ @alambic/manifest   (per-template manifests, CSS)    │
-│  ├ @alambic/test-utils (Vitest + Playwright fixtures)   │
+│  ├ @alambic/islands    (per-section JS chunks)          │
+│  ├ @alambic/manifest   (per-template manifest + budgets)│
 │  └ @alambic/lsp        (Liquid LSP server)              │
 ├─────────────────────────────────────────────────────────┤
 │  Orchestrator          @alambic/core                    │
@@ -243,7 +241,7 @@ export interface AdapterContext {
 }
 ```
 
-Any adapter implementing these three interfaces is a valid Alambic preset. The reference implementation is `@alambic/preset-tailwind-alpine`. The conformance test suite in `@alambic/test-utils` exercises every method against a fixture theme; passing the suite is the definition of "valid adapter."
+Any adapter implementing these three interfaces is a valid Alambic preset. The reference implementation is `@alambic/preset-tailwind-alpine`. The conformance test suite is exported from `@alambic/adapters/conformance` — passing it is the definition of "valid adapter."
 
 ## 6. Schema DSL (overview)
 
@@ -301,61 +299,69 @@ The consumer's `tsconfig.json` adds `.alambic/types` to `include`.
 
 ## 8. Section-aware HMR
 
-The mechanism:
+Provided by Shopify CLI's built-in `theme-hot-reload.js` (default `--live-reload hot-reload` mode). When the dev server (via `--path .alambic/theme`) detects a change and syncs it, the injected script does a section-aware DOM swap on the preview without a full page reload.
 
-1. Dev server receives a file change for `sections/x/index.liquid`.
-2. `@alambic/core` pushes the changed file to the dev theme via the Shopify CLI's underlying API (we invoke the CLI as a child process and listen for its sync completion event).
-3. Once the push is acknowledged, `@alambic/hmr` emits a `section-update` HMR event over Vite's WebSocket.
-4. The browser client (a small runtime injected by `@alambic/islands`) fetches `?sections=x` from the preview URL. Shopify's Section Rendering API returns the freshly rendered section HTML.
-5. The runtime locates `<div data-section-id="x">` in the current DOM and swaps `innerHTML`.
-6. Islands inside the new HTML are re-hydrated by the JS adapter's runtime.
+This requires the browser to access the preview via the local proxy URL (`http://127.0.0.1:9292`). The `myshopify.com` share URL does **not** inject the hot-reload script — that's by design on Shopify's side.
 
-Failure modes are documented in `packages/hmr/CLAUDE.md`. If any step fails, we fall back to a full page reload with a console explanation.
+An earlier `@alambic/hmr` package implemented this manually via Vite's WS + the Section Rendering API. It was racing the CLI's own better implementation and got deleted in Phase 3. If a future need arises (e.g. once we proxy `:9292` through Vite), the ~300 LOC of that approach can be rebuilt cleanly.
 
 ## 9. Islands
 
-Each section can declare a hydration strategy via Liquid render parameter:
+### Phase 4-lite (shipped)
+
+Sections opt into hydration by wrapping their root markup inline:
 
 ```liquid
-{%- render 'island',
-    section: 'product-gallery',
-    strategy: 'visible'
--%}
+<alambic-island data-section="product-gallery" data-load="visible">
+  <section>...</section>
+</alambic-island>
 ```
 
-Strategies:
+Strategies in the shipped runtime:
 
-- `load` — hydrate immediately on page load.
-- `idle` — hydrate when `requestIdleCallback` fires.
-- `visible` — hydrate when the section enters the viewport (IntersectionObserver).
-- `hover` — hydrate on first hover/focus within the section.
-- `media:(query)` — hydrate when a CSS media query matches.
-- `none` — never hydrate. (Default for non-interactive sections.)
+- `eager` (default) — hydrate on `connectedCallback`.
+- `visible` — hydrate on first IntersectionObserver hit (rootMargin 200px).
 
-At build time, `@alambic/islands` analyzes each section's `client.ts` and produces:
+A section's `client.ts` exports `setup(ctx)` as its default. The orchestrator emits one chunk per `client.ts` plus a separately-hashed `alambic-runtime` chunk. The runtime reads `window.__alambic.manifest.entries[section]`, dynamic-imports the chunk, and calls `setup({root, section, strategy})`. Framework-neutral — sections decide what `setup` does.
 
-- One JS chunk per island.
-- A hydration manifest mapping `section-handle → { chunk, strategy, exports }`.
-- A small runtime (~2KB gzipped) that reads the manifest and orchestrates hydration.
+The orchestrator emits one snippet, `alambic-islands.liquid`, rendered once in `layout/theme.liquid`. In dev it inlines the runtime + a JSON manifest pointed at Vite URLs. In build it inlines a Liquid-interpolated manifest (`{{ '…' | asset_url }}`) plus a `<script type="module">` pointing at the bundled `alambic-runtime` asset.
 
-Per-template, only the islands actually rendered in that template's sections are listed in the manifest. Nothing else is fetched.
+### Phase 4-full (deferred — vision below)
+
+The shipped strategies are intentionally minimal. The strategies below are *not* implemented today; they're the long-form vision should they become necessary:
+
+- `load` / `idle` / `hover` / `media:(query)` / `none` strategies via a richer directive set.
+- A per-template manifest that lists only the islands actually rendered in each template's sections.
+- A `{% render 'island', ... %}` snippet (deferred because Liquid snippets don't transparently pass content blocks).
+
+The shipped runtime is the smallest viable thing; promote sections to the full system only if a real use case appears.
 
 ## 10. Per-template manifest
 
-Built by `@alambic/manifest` at build time. Algorithm:
+### Phase 5-lite (shipped)
 
-1. Read every file under `templates/`.
-2. For each template, resolve the section tree (templates → section groups → sections).
-3. For each section, look up its asset dependencies (CSS chunk, island JS chunk, font subset, image preloads).
-4. Emit `.alambic/theme/snippets/alambic-template-manifest.liquid` — a Liquid snippet that, given the current template, renders the right `<link>` and `<script>` tags.
-5. Run critical CSS extraction per template against a server-rendered preview HTML.
-6. Inline critical CSS into a `<style data-alambic-critical>` block.
+Built by `@alambic/manifest` at the end of every build:
 
-The snippet is included once in `layout/theme.liquid` (replacing the equivalent of barrel's `vite-tag`):
+1. Walk `templates/*.json` and `templates/*.liquid` in the staging dir.
+2. For each, collect section types — JSON `sections.<id>.type` + Liquid `{% section 'x' %}` + section-group expansion via `{% sections '<group>' %}`.
+3. Cross-reference with the bundle to find each section's `client.ts` chunk and its byte size.
+4. Emit `snippets/alambic-head.liquid` — a `case/when` dispatching on `template.name`, emitting `<link rel="modulepreload" href="{{ '<chunk>' | asset_url }}">` for the section chunks the template will use.
+5. Check budgets (`alambic.config.ts → budgets`). `onBreach: 'fail'` aborts the build.
+6. Log a table; `alambic build --report` also writes `.alambic/alambic-report.json`.
+
+The snippet is included once in `layout/theme.liquid`:
 
 ```liquid
 {% render 'alambic-head', template: template %}
 ```
+
+### Phase 5-full (deferred — only build if needed)
+
+- Critical CSS extraction per template (needs HTML produced by an embeddable server-side Liquid renderer — none of the off-the-shelf options match Shopify's runtime cheaply enough today).
+- Per-template CSS chunking (today every page loads one shared CSS sheet).
+- Walking Rollup's import graph for shared split chunks beyond entry granularity.
+- Template suffix variants (`templates/<name>.<suffix>.json`).
+- Font subsetting, image preload hints.
 
 ## 11. LSP
 
@@ -382,12 +388,13 @@ alambic doctor               # Workspace + theme health check
 # Planned (later phases):
 alambic build --push         # Build then `shopify theme push`         (Phase 3)
 alambic push [--env <name>]  # Push staging dir to a specific env       (Phase 3)
+alambic pull [--env <name>]  # Pull merchant-owned JSON; --into syncs    (post-5)
 alambic new section <name>   # Scaffold a section folder                (Phase 2)
 alambic new snippet <name>   # Scaffold a snippet                       (Phase 2)
 alambic new template <name>  # Scaffold a JSON template                 (Phase 2)
 alambic types                # One-shot type generation                 (Phase 2)
 alambic schema check         # Validate all section schemas             (Phase 2)
-alambic preview              # Run the section preview server           (Phase 6)
+alambic lsp                  # Start the Liquid LSP over stdio          (Phase 6-lite)
 ```
 
 CLI is built on `commander` for output. Every command will support `--json` for machine-readable output (used by CI and Claude Code) as it lands.
@@ -452,13 +459,13 @@ If you're looking for…
 |---|---|
 | Section schema authoring | `@alambic/schema` |
 | Theme-wide types | `@alambic/types` |
-| Hydration directives | `@alambic/islands` |
-| Section-aware HMR | `@alambic/hmr` |
+| Per-section JS chunks + `<alambic-island>` runtime | `@alambic/islands` |
+| Section-aware HMR | Shopify CLI's built-in `theme-hot-reload.js` |
 | Per-template manifest, critical CSS, budgets | `@alambic/manifest` |
 | Adapter contracts | `@alambic/adapters` |
 | Tailwind v4 + Alpine reference impl | `@alambic/preset-tailwind-alpine` |
 | Vite plugin entry, dev server, build orchestration | `@alambic/core` |
-| Vitest helpers, Playwright fixtures, preview server | `@alambic/test-utils` |
+| Adapter conformance suite | `@alambic/adapters/conformance` |
 | Liquid LSP | `@alambic/lsp` |
 | Command-line interface | `@alambic/cli` |
 | Project scaffolding | `create-alambic` |

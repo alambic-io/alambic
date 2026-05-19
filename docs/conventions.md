@@ -99,7 +99,7 @@ Every generated file has this header:
 - Snapshot tests for code generators only. Never for free-form output.
 - Each `describe` block matches a single unit of work; no nested `describe` more than two levels deep.
 - Fixtures live in `__fixtures__/`, organized by the test that uses them.
-- Tests must be deterministic. Time-dependent tests use a frozen clock from `@alambic/test-utils`.
+- Tests must be deterministic. Time-dependent tests freeze the clock with vitest's `vi.useFakeTimers()`.
 - Integration tests against a real theme run from `test/integration/` and use the example themes as fixtures.
 
 ## 9. Commits & branches
@@ -140,3 +140,24 @@ Alambic emits Liquid into consumer themes. That Liquid is part of our public API
 ## 14. Environment variables
 
 Every env var the project reads is documented in `docs/env.md` and validated at process start. Unknown `ALAMBIC_*` vars produce a warning.
+
+## 15. Merchant-owned vs dev-owned files
+
+A Shopify theme contains two distinct kinds of files. Treat them differently.
+
+**Dev-owned** (Liquid, JS, CSS, schema, configs): edited in `src/` and pushed via `alambic push`.
+
+- `layout/*.liquid`, `sections/<name>/*`, `blocks/<name>/*`, `snippets/*.liquid`
+- `assets/*`, `*.css`, `*.ts`, `client.ts`, `schema.ts`
+- `config/settings_schema.json` — defines *what* settings exist (the schema), not their values.
+- `locales/*.json` (unless the merchant translates via the editor).
+
+**Merchant-owned** (theme editor edits, store-by-store state): the merchant edits these via the Shopify admin. We `pull` them; we do **not** push them.
+
+- `templates/*.json` — section ordering + per-section settings the merchant chose.
+- `config/settings_data.json` — the values the merchant picked for theme settings.
+- `sections/*.json` — section groups (Online Store 2.0); editable in the theme editor.
+
+The default scaffold ships a `.shopifyignore` covering the merchant-owned set. `alambic build` copies it into the staging dir so `shopify theme push --path .alambic/theme` honors it.
+
+To refresh a working copy from a real store: `alambic pull --env prod`. To mirror prod's merchant state into dev/preprod without touching `src/`: `alambic pull --env prod --into dev`. There is no bidirectional reconciliation — Shopify hasn't solved that problem and we don't either.

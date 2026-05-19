@@ -32,7 +32,12 @@
   },
   "dependencies": {
     "@alambic/core": "workspace:*",
-    "commander": "^14.0.3"
+    "@alambic/lsp": "workspace:*",
+    "@alambic/schema": "workspace:*",
+    "@alambic/types": "workspace:*",
+    "commander": "^14.0.3",
+    "jiti": "^2.7.0",
+    "tinyglobby": "^0.2.10"
   },
   "devDependencies": {
     "@types/node": "^22.19.19",

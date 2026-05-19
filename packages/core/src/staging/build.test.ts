@@ -75,6 +75,14 @@ describe('buildStaging', () => {
     expect(written).not.toContain('README.md');
   });
 
+  it('copies a root-level .shopifyignore into the staging dir', async () => {
+    await writeFile(join(themeRoot, '.shopifyignore'), 'templates/*.json\n');
+    const written = await buildStaging({ themeRoot, output });
+    expect(written).toContain('.shopifyignore');
+    const content = await readFile(join(output, '.shopifyignore'), 'utf8');
+    expect(content).toBe('templates/*.json\n');
+  });
+
   it('cleans output by default', async () => {
     await buildStaging({ themeRoot, output });
     // Add a stale file directly in output (e.g., left over from previous build).

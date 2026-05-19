@@ -48,6 +48,14 @@ describe('mapFile', () => {
     expect(mapFile('sections/.DS_Store').kind).toBe('skipped');
   });
 
+  it('passes through root-level .shopifyignore so the Shopify CLI sees it', () => {
+    expect(mapFile('.shopifyignore')).toEqual({ kind: 'mapped', dest: '.shopifyignore' });
+  });
+
+  it('does not pass through .shopifyignore inside theme subdirs', () => {
+    expect(mapFile('sections/.shopifyignore').kind).toBe('skipped');
+  });
+
   it('skips nested section .liquid files that are not index.liquid', () => {
     const r = mapFile('sections/hero/partial.liquid');
     expect(r.kind).toBe('skipped');

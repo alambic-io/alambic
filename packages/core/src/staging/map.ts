@@ -4,21 +4,22 @@
  *
  * Source                                  → Destination
  * ──────────────────────────────────────────────────────────────────
- * sections/<name>/index.liquid            → sections/<name>.liquid
- * sections/<name>.liquid                  → sections/<name>.liquid
- * snippets/*.liquid                       → snippets/*.liquid       (passthrough)
- * templates/* /*.{liquid,json}            → same                    (passthrough)
- * config/*.json                           → same                    (passthrough)
- * locales/*.json                          → same                    (passthrough)
- * layout/*.liquid                         → same                    (passthrough)
- * blocks/*.liquid                         → same                    (passthrough)
- * assets/*                                → same                    (passthrough)
+ * sections/<name>/index.liquid            → sections/<name>.liquid    (flatten)
+ * sections/<name>.liquid                  → sections/<name>.liquid    (passthrough)
+ * blocks/<name>/index.liquid              → blocks/<name>.liquid      (flatten)
+ * blocks/<name>.liquid                    → blocks/<name>.liquid      (passthrough)
+ * snippets/*.liquid                       → snippets/*.liquid         (passthrough)
+ * templates/* /*.{liquid,json}            → same                      (passthrough)
+ * config/*.json                           → same                      (passthrough)
+ * locales/*.json                          → same                      (passthrough)
+ * layout/*.liquid                         → same                      (passthrough)
+ * assets/*                                → same                      (passthrough)
  *
  * Skipped (Vite-handled or non-theme):
  *   - *.ts, *.tsx, *.js, *.jsx, *.css, *.scss, *.sass
- *   - Files inside `sections/<name>/` that aren't `index.liquid`
- *     (placeholder rule for Phase 1; co-located TS/CSS get bundled
- *      by Vite and don't appear under `sections/` in the output)
+ *   - Files inside `sections/<name>/` or `blocks/<name>/` that aren't
+ *     `index.liquid` (co-located TS/CSS get bundled by Vite and don't
+ *      appear under those directories in the output)
  */
 
 export interface MappedFile {
@@ -55,6 +56,18 @@ const THEME_DIRS = new Set([
 ]);
 
 /**
+ * Root-level dotfiles that pass through to staging untouched. These are
+ * files Shopify CLI itself reads from the theme path during push/pull —
+ * notably `.shopifyignore`, which selects which paths the push step
+ * skips (merchant-owned templates, settings_data.json, section groups).
+ *
+ * Keep this list tight. Don't bring across `.env`, `.gitignore`, etc. —
+ * they're not part of the deployed theme and Shopify CLI doesn't read
+ * them from the path.
+ */
+const ROOT_DOTFILES = new Set(['.shopifyignore']);
+
+/**
  * Map a single source path (relative to themeRoot) to its destination
  * (relative to output), or report that it should be skipped.
  *
@@ -63,8 +76,13 @@ const THEME_DIRS = new Set([
 export function mapFile(rel: string): MapResult {
   const path = rel.replace(/\\/g, '/');
 
-  // Hidden files and other noise.
+  // Allowlisted root-level dotfiles (`.shopifyignore`) flow through as
+  // passthrough copies. Anything else hidden — `.env`, `.gitignore`,
+  // nested `.foo` files inside theme dirs — is skipped.
   if (path.startsWith('.') || path.includes('/.')) {
+    if (!path.includes('/') && ROOT_DOTFILES.has(path)) {
+      return { kind: 'mapped', dest: path };
+    }
     return { kind: 'skipped', reason: 'hidden file' };
   }
 
@@ -87,14 +105,23 @@ export function mapFile(rel: string): MapResult {
     return { kind: 'mapped', dest: `sections/${sectionIndex[1]}.liquid` };
   }
 
-  // Reject (skip) other .liquid files inside section folders. The author
-  // can still co-locate `.ts`/`.css` files there (Vite handles them);
-  // multiple section liquids per folder don't have a Phase 1 convention.
-  const nestedSectionLiquid = /^sections\/[^/]+\/.+\.liquid$/.exec(path);
-  if (nestedSectionLiquid) {
+  // Same flattening for theme blocks: blocks/<name>/index.liquid → blocks/<name>.liquid
+  const blockIndex = /^blocks\/([^/]+)\/index\.liquid$/.exec(path);
+  if (blockIndex) {
+    return { kind: 'mapped', dest: `blocks/${blockIndex[1]}.liquid` };
+  }
+
+  // Skip nested .liquid files in section/block folders that aren't index.liquid.
+  if (/^sections\/[^/]+\/.+\.liquid$/.test(path)) {
     return {
       kind: 'skipped',
       reason: 'nested section .liquid (only index.liquid is mapped)',
+    };
+  }
+  if (/^blocks\/[^/]+\/.+\.liquid$/.test(path)) {
+    return {
+      kind: 'skipped',
+      reason: 'nested block .liquid (only index.liquid is mapped)',
     };
   }
 

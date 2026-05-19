@@ -141,7 +141,7 @@ Peer dependencies keep the consumer in control of versions.
 
 ## Testing
 
-- Conformance suite from `@alambic/test-utils` is the primary test. This package must pass it.
+- Conformance suite from `@alambic/adapters/conformance` is the primary test. This package must pass it.
 - Snapshot tests for token emission against fixture `settings_data.json` files.
 - Snapshot tests for generated bindings against fixture section schemas.
 - Runtime bundle size assertion: ≤ 3 KB gzipped.

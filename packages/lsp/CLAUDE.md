@@ -1,123 +1,123 @@
 # @alambic/lsp
 
-> A Language Server Protocol implementation for Liquid that knows about Alambic schemas, generated types, locale keys, and metaobject definitions.
-
-This package is **phase 7** material. Spec exists so we know where we're going; implementation comes after phases 1–6 land.
+> A Liquid Language Server that knows about Alambic schemas, locales, and snippets. Editor-agnostic — speaks LSP over stdio.
 
 ---
 
 ## Purpose
 
-Stock Liquid tooling treats Liquid as a dumb template language: no autocompletion for settings, no validation against schemas, no go-to-definition. `@alambic/lsp` fills that gap by combining:
+Stock Liquid tooling treats Liquid as a dumb template language: no autocompletion for settings, no validation against schemas, no quick hint that a `{{ 'key' | t }}` references a non-existent locale key. `@alambic/lsp` fills that gap by reading the same `schema.ts` + `locales/*.json` files Alambic's build pipeline reads, and answering completion + diagnostic queries from any LSP-aware editor.
 
-- The generated `Theme` namespace from `@alambic/types`.
-- Compiled section schemas from `@alambic/schema`.
-- Shopify's own `@shopify/theme-check-node` for base Liquid analysis.
+This is **Phase 6-lite**. Intentionally narrow surface; grows when there's concrete user demand.
 
-The result: type-aware Liquid editing.
+## What's NOT in scope (deliberately)
+
+- Liquid grammar parsing and theme-check-style Liquid diagnostics. Shopify already ships `@shopify/theme-check-language-server` for that. Run both LSPs side-by-side — they're complementary, not redundant.
+- Hover, go-to-definition, code actions, rename — deferred until a real user asks.
+- Metaobject / Admin API integration — needs the Admin API cache (not yet built).
+- LSP "workspace symbols" / outline — low value vs. effort.
 
 ## Public API
 
 ```ts
-export { startServer, type LspServerOptions } from './server';
-export { type Capabilities } from './capabilities';
+// Library exports
+export { startServer, type ServerHandle, type ServerInitOptions } from './server';
+export { buildThemeIndex, type ThemeIndex } from './index/theme';
+export { detectContext, type LiquidContext } from './context';
+export {
+  findCompletionContext, findLocaleReferences, findSettingReferences,
+  type CompletionContext, type LocaleReference, type SettingReference,
+} from './parse/liquid-patterns';
+export { computeCompletions, type ComputeCompletionsOptions } from './features/completion';
+export { computeDiagnostics, type ComputeDiagnosticsOptions } from './features/diagnostics';
 ```
 
-Distributed as a standalone binary too: `alambic-lsp` runs the server over stdio. A separate `alambic-vscode` extension (different repo) wraps it for VS Code.
+Distributed as a binary too: `alambic-lsp` runs the server over stdio. Identical to `alambic lsp` from the CLI.
 
-## Capabilities
+## Capabilities (shipped)
 
-| Feature | Behavior |
+| Feature | What it does |
 |---|---|
-| Completion | `section.settings.` → list of settings from compiled schema. `'key' \| t` → locale keys from generated types. `metaobject.X.` → fields of metaobject `X`. |
-| Hover | Show resolved type, label, default. For locale keys, show translation in the default locale. |
-| Diagnostics | Unknown setting keys, unknown block keys, unknown locale keys, unknown metaobject handles. Severity: error. |
-| Go to definition | From `{% render 'section-name' %}` jumps to that section's `schema.ts`. From `{{ settings.X }}` jumps to `settings_schema.json`. |
-| Code actions | "Add setting to schema" when an unknown setting is referenced. "Add locale key" when an unknown translation key is used. |
-| Document symbols | Sections, blocks, settings outline in the Liquid file. |
-| Folding | Liquid block folding for `{% for %}`, `{% if %}`, `{% comment %}`. |
-| Rename | Renaming a setting in `schema.ts` proposes renaming all references in the matching `index.liquid`. |
+| Completion | `section.settings.<X>` in a section's `.liquid` → that section's settings (from `schema.ts`). `block.settings.<X>` in a theme block's `.liquid` → that block's settings. `'<X>' \| t` → locale keys (from `locales/*.json`). `{% render '<X>' %}` → snippet names. `{% section '<X>' %}` → section handles. |
+| Diagnostics | Unknown locale key (warning). Unknown `section.settings.<X>` id in a section file (warning, scoped to that section's schema). Unknown `block.settings.<X>` id in a theme-block file. |
+| Document sync | Incremental. |
+| Workspace file watching | Listens for `workspace/didChangeWatchedFiles` and refreshes the index. The actual file-watcher registration is the editor's job (most clients send these events for any tracked file). |
 
 ## Architecture
 
 ```
-Editor (VS Code)
+Editor (VS Code, Zed, JetBrains, Neovim, ...)
    │
    │ LSP over stdio
    ▼
 ┌────────────────────────────────────────────┐
-│  @alambic/lsp server                       │
+│  @alambic/lsp                              │
 │                                            │
-│  ┌──────────────────────────────────────┐  │
-│  │ Liquid parser                        │  │
-│  │ (@shopify/theme-check-node engine)   │  │
-│  └──────────────────────────────────────┘  │
+│  src/server.ts                             │
+│   ├─ documents (TextDocuments)             │
+│   ├─ onCompletion → computeCompletions     │
+│   ├─ onDid(Change|Open) → computeDiagnostics│
+│   └─ onDidChangeWatchedFiles → refresh     │
 │                                            │
-│  ┌──────────────────────────────────────┐  │
-│  │ Schema index                         │  │
-│  │ Watches sections/*/schema.ts via     │  │
-│  │ @alambic/schema's compiler           │  │
-│  └──────────────────────────────────────┘  │
+│  src/index/theme.ts                        │
+│   ├─ @alambic/schema/discover (schemas)    │
+│   ├─ @alambic/schema/locales  (locales)    │
+│   └─ snippets directory walk               │
 │                                            │
-│  ┌──────────────────────────────────────┐  │
-│  │ Type index                           │  │
-│  │ Reads .alambic/types/*.d.ts          │  │
-│  └──────────────────────────────────────┘  │
+│  src/parse/liquid-patterns.ts              │
+│   └─ regex-based pattern detection (no AST)│
 │                                            │
-│  ┌──────────────────────────────────────┐  │
-│  │ Locale index                         │  │
-│  │ Reads locales/*.json                 │  │
-│  └──────────────────────────────────────┘  │
+│  src/context.ts                            │
+│   └─ URI → LiquidContext (section/block/…) │
 │                                            │
-│  ┌──────────────────────────────────────┐  │
-│  │ Capability handlers                  │  │
-│  │ completion, hover, diagnostics,      │  │
-│  │ definition, codeActions, rename      │  │
-│  └──────────────────────────────────────┘  │
+│  src/features/                             │
+│   ├─ completion.ts  (pure)                 │
+│   └─ diagnostics.ts (pure)                 │
 └────────────────────────────────────────────┘
 ```
+
+Pure functions in `features/` are unit-testable without standing up a Connection or paired Duplex streams. The server is a thin glue layer.
 
 ## Internal modules
 
 ```
 src/
-├── index.ts
-├── server.ts                  # LSP connection setup
-├── capabilities/
-│   ├── completion.ts
-│   ├── hover.ts
-│   ├── diagnostics.ts
-│   ├── definition.ts
-│   ├── code-actions.ts
-│   └── rename.ts
-├── indexes/
-│   ├── schema-index.ts        # sections/*/schema.ts → compiled schemas
-│   ├── type-index.ts          # .alambic/types/*.d.ts → resolved Theme namespace
-│   ├── locale-index.ts        # locales/*.json
-│   └── theme-check.ts         # Wraps @shopify/theme-check-node
-├── parsing/
-│   └── liquid-cursor.ts       # Locate cursor in Liquid AST for completion context
-└── internal/
-    └── watch.ts               # File watchers
+├── index.ts                # Public exports
+├── cli.ts                  # `alambic-lsp` bin entry (shebang)
+├── server.ts               # Connection setup + LSP handler registration
+├── context.ts              # URI → LiquidContext
+├── index/
+│   └── theme.ts            # Theme-wide index (schemas + locales + snippets)
+├── parse/
+│   └── liquid-patterns.ts  # Cursor-aware Liquid pattern detection
+└── features/
+    ├── completion.ts       # computeCompletions(args) → CompletionItem[]
+    └── diagnostics.ts      # computeDiagnostics(args) → Diagnostic[]
 ```
 
 ## Dependencies
 
-- `@alambic/schema` — compiled schemas.
-- `@alambic/types` — generated types.
+- `@alambic/schema` — `discoverSchemas`, `loadLocales`, type names.
 - `vscode-languageserver` — LSP runtime.
-- `@shopify/theme-check-node` — base Liquid analysis.
+- `vscode-languageserver-textdocument` — incremental document handling.
+- `vscode-uri` — URI parsing.
+
+No Shopify Liquid parser yet. We use regex against the text immediately around the cursor (cheap, good for the patterns we currently care about). If we add hover / go-to-definition we'll upgrade to a real Liquid parser (`@shopify/liquid-html-parser` is the obvious candidate).
 
 ## Testing
 
-- Unit tests per capability: synthesize a Liquid document and cursor position, assert the response.
-- Integration tests using a real LSP client harness (`vscode-languageserver-testbed` or similar).
-- Performance budget: completion must return in < 80ms p95 on a fixture project with 50 sections.
+- Unit tests for `liquid-patterns.ts`, `context.ts`, `index/theme.ts`, and both feature modules.
+- The features are unit-tested via direct calls to `computeCompletions` + `computeDiagnostics`.
+- No end-to-end LSP-over-stdio test today — the pure-handler split makes it unnecessary for the current capability set.
+
+## Per-editor setup
+
+End-user setup snippets for every major editor live in `docs/lsp-setup.md`. Each editor follows the same pattern: register `alambic-lsp` (or `alambic lsp`) as the language server for `*.liquid` files.
 
 ## Claude Code notes
 
-- This package is large and intricate. Don't start work here without reading `docs/architecture.md` § 11 and this file end to end.
-- The LSP must tolerate type-gen being stale or absent. Degrade gracefully: still parse Liquid, still flag Shopify-level errors, just skip schema-aware diagnostics.
-- File watchers are easy to leak. Use the lifecycle helpers in `src/internal/watch.ts`.
-- All capability handlers must be pure given the current indexes. Don't reach back into the filesystem from a handler — that's what the indexes are for.
-- The LSP is the killer feature for adoption. Polish matters more than feature count.
+- **Don't reach into the filesystem from a handler.** Read from `ThemeIndex`. If you need new data, add it to `buildThemeIndex`.
+- **Pure handlers are the contract.** New capabilities go in `features/<name>.ts` as pure functions over `(args, index)`. The server registers them.
+- **Don't reimplement what `@shopify/theme-check-language-server` already does.** Liquid syntax errors, undefined filters, deprecated tags — those are theirs. We add schema/locale/snippet awareness on top.
+- **Trigger characters matter.** `.`, `'`, `"` are registered. Adding new ones requires testing on every editor — some clients (notably Zed) trigger on far more events than VS Code.
+- **The regex parser is intentionally simple.** Multi-line Liquid expressions don't always work. Upgrade to a real parser when needed; don't pile on regex hacks.

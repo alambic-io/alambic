@@ -4,20 +4,27 @@
 
 Alambic refines raw Liquid theme code into a typed, islands-architected, performance-budgeted theme — without leaving the Shopify CLI or Liquid runtime. It's the developer experience of a modern frontend app, applied to Online Store 2.0 themes.
 
+Production output is always a flat Shopify theme directory that `shopify theme push` consumes. There is no app server, no headless rendering, no proprietary runtime.
+
 **Status:** pre-1.0. APIs are subject to change. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
-## What it gives you
+## What it gives you today
 
-- **TypeScript-authored section schemas** with a typed DSL that emits both `schema.json` and `Theme.Section<'name'>` types.
-- **End-to-end type generation** for theme settings, sections, blocks, metaobjects, metafields, locales, and the Storefront API — a single `.alambic/types/index.d.ts` your editor consumes.
-- **Section-aware HMR** via the Shopify Section Rendering API. A section edit re-renders only that section's DOM. Alpine stores, forms, and scroll position survive.
-- **Islands architecture for Liquid.** Mark sections as `client:visible`, `client:idle`, `client:hover`, or `client:none`. Hydration runs only where needed.
-- **Per-template manifests.** Each template (`product.json`, `collection.json`, …) loads only the JS, CSS, and fonts it actually needs. Critical CSS is inlined per template.
-- **Pluggable runtime stack.** A single adapter contract for CSS engines and JS runtimes. Default: Tailwind v4 + Alpine. Swap to UnoCSS, Stimulus, HTMX, or vanilla without forking.
-- **A Liquid LSP** that knows your section schemas, theme settings, metaobject definitions, and locale keys.
-- **A section preview server** — Storybook for Liquid, driven by `*.stories.liquid` files.
+- **TypeScript-authored section + theme-block schemas** — a typed DSL covering every Shopify setting type. Compiles to inlined `{% schema %}` blocks and emits `Theme.Section<'name'>` / `Theme.Block<'name'>` types via `.alambic/types/index.d.ts`.
+- **Section-aware hot reload** out of the box — provided by Shopify CLI's own `theme-hot-reload.js`. Sub-second swaps on the local proxy URL (`127.0.0.1:9292`), state outside the changed section preserved.
+- **Per-section JS chunking with islands.** Wrap a section in `<alambic-island data-section="x" data-load="visible">`, export `setup(ctx)` from `client.ts`, and that section's JS chunk loads only when the island scrolls into view. Framework-neutral — works with vanilla DOM, Alpine, anything.
+- **Per-template asset graph + budgets.** Each template loads only the section chunks it actually needs (via `modulepreload` hints in `alambic-head.liquid`). Set `budgets.perTemplate.jsKb` in your config; build fails or warns on breach.
+- **Environment management.** `environments: { dev, preprod, prod }` with `env('SHOPIFY_DEV_STORE')` references resolved via Vite-style `.env.[name][.local]` precedence. `--env <name>` swaps the active env for `dev`/`build`/`push`/`pull`.
+- **`alambic pull --env prod --into dev`** — mirror merchant-owned JSON (templates, settings_data, section groups) from one env onto another without touching `src/`.
+- **Pluggable runtime stack.** A single adapter contract for CSS + JS runtimes. Default: Tailwind v4 + Alpine. Swap presets without forking.
+- **Editor-agnostic Liquid LSP.** Completion for `section.settings.*`, `block.settings.*`, `{{ 'k' | t }}`, `{% render '…' %}`, `{% section '…' %}`. Warnings for unknown locale keys + unknown setting ids. Works in VS Code, Zed, JetBrains (via LSP4IJ), Neovim, Helix, Sublime — anywhere that speaks LSP over stdio. See [`docs/lsp-setup.md`](docs/lsp-setup.md).
+
+## What's coming
+
+- **LSP polish**: hover, go-to-definition, code actions, metaobject completion. The Phase 6-lite implementation covers completion + diagnostics; the rest lands when there's concrete user demand.
+- **Phase 7 hardening**: API freeze, perf benchmarks vs. Dawn, external preset to validate the adapter contract.
 
 ## What it explicitly does not do
 
@@ -36,7 +43,22 @@ pnpm install
 pnpm dev   # Runs `shopify theme dev` + Vite + Alambic together
 ```
 
-`pnpm dev` proxies the Shopify CLI preview and injects Alambic's Vite middleware. You get HMR, type generation in watch mode, schema validation, and the preview server on a single port.
+`pnpm dev` spawns `shopify theme dev --path .alambic/theme` alongside a Vite dev server on `:5173`. The live-synced staging dir mirrors `src/`, schemas inline into the staged Liquid, and Shopify CLI's built-in hot-reload swaps changed sections in place. Visit the local proxy (`127.0.0.1:9292`) — that's the URL with hot-reload wired up.
+
+Other commands:
+
+```bash
+alambic build [--env <name>] [--report]   # one-shot build into .alambic/theme/
+alambic push [--env <name>] [--no-build]  # build then `shopify theme push`
+alambic pull [--env <src>] [--into <tgt>] # mirror merchant-owned JSON between envs
+alambic new section <name> [--with-client]
+alambic new block <name>
+alambic new snippet <name>
+alambic new template <name>
+alambic types                              # one-shot type gen
+alambic schema check                       # validate schemas
+alambic doctor                             # workspace + theme health check
+```
 
 ## Documentation
 

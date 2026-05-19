@@ -1,6 +1,11 @@
 {
   "sections": {
-    "hero": { "type": "hero" }
+    "hero": { "type": "hero" },
+    "spacer": {
+      "type": "hero",
+      "settings": { "heading": "Scroll down to lazy-hydrate the next section ↓", "subheading": "" }
+    },
+    "featured": { "type": "featured" }
   },
-  "order": ["hero"]
+  "order": ["hero", "spacer", "featured"]
 }

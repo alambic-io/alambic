@@ -1,48 +1,89 @@
 # @alambic/manifest
 
-> Per-template asset manifest, critical CSS extraction, performance budget enforcement.
+> Per-template asset manifest + performance budgets. Phase 5-lite — the smallest thing that ships per-template-aware preloads and budget enforcement.
 
 ---
 
 ## Purpose
 
-A default Liquid theme loads a global JS bundle and a global CSS bundle on every page. `@alambic/manifest` replaces that with a per-template asset graph: each template (`product.json`, `collection.json`, etc.) loads only the assets actually used by the sections it renders.
+In a default Liquid theme every page loads the same global bundle. Once per-section client chunks exist (Phase 4-lite islands), `<head>` should announce *which* chunks each template will need, so the browser can start fetching them before scrolling triggers hydration.
 
-It also extracts critical CSS per template and enforces performance budgets at build time.
+`@alambic/manifest` does that, plus budgets:
+
+1. Walk every `templates/<name>.{json,liquid}` in the staging dir to discover which sections each template renders.
+2. Cross-reference with the bundle to find each section's `client.ts` chunk and its size.
+3. Emit `snippets/alambic-head.liquid` — a single Liquid `case/when` that, per template, emits `<link rel="modulepreload">` tags for the chunks that template will use.
+4. Compute per-template JS/CSS totals, compare against a `budgets:` block in `alambic.config.ts`, and either warn or fail the build.
+5. Log a table at the end of every build; optionally write `alambic-report.json`.
+
+It's intentionally not invoked directly by end users — `@alambic/core` orchestrates everything.
 
 ## Public API
 
 ```ts
-export { manifestPlugin } from './plugin';
-export { type TemplateManifest, type TemplateAssetGraph } from './types';
-export { type PerformanceBudget } from './budget';
+// Types
+export type {
+  BudgetBreach,
+  BudgetCheckResult,
+  BuildManifest,
+  PerformanceBudget,
+  TemplateAssetGraph,
+} from './types';
+
+// Template tree resolver (staging dir → which sections each template renders).
+export {
+  resolveTemplateTree,
+  type ResolvedTemplate,
+  type ResolveTemplateTreeOptions,
+} from './resolve/template-tree';
+
+// Asset-graph builder (templates + bundle → per-template assets + sizes).
+export { buildAssetGraph, type BuildAssetGraphOptions } from './resolve/asset-graph';
+
+// Liquid snippet emitter.
+export { renderHeadSnippet } from './emit/head-snippet';
+
+// Budget checking.
+export { checkBudgets, type CheckBudgetsOptions } from './budget/check';
+
+// Report formatters (JSON + terminal table).
+export {
+  renderReportJson,
+  renderReportTable,
+  type ReportJson,
+  type ReportOptions,
+} from './emit/report';
 ```
 
-The plugin is consumed by `@alambic/core`. End users interact with it only through:
+## What's resolved
 
-- The `<head>` snippet (`alambic-head.liquid`) emitted into the consumer theme.
-- The `budgets` field in `alambic.config.ts`.
-- The build report (`alambic build --report`).
+- `templates/<name>.json` — parsed; `sections.<id>.type` reads as the section handle.
+- `templates/<name>.liquid` — regex-scanned for `{% section 'x' %}` and `{% sections 'group' %}`.
+- `sections/<group>.json` — Online Store 2.0 section groups. Resolved when referenced via `{% sections '<group>' %}`.
 
-## Algorithm
+## What's not resolved (deferred)
 
-1. **Resolve template trees.**
-   Walk every file under `templates/` (`*.json` and `*.liquid`). For each template, build the section tree: template → section group → sections → blocks. JSON templates reference section handles directly; Liquid templates are statically analyzed for `{% section %}` and `{% sections %}` tags.
+- Template suffix variants (`templates/<name>.<suffix>.json` / `.liquid`).
+- Conditional sections inside blocks (counted via parent section once).
+- App blocks (their JS isn't part of our build).
+- Walking Rollup's import graph for shared split chunks. Today only entry-level chunks contribute to "shared JS" totals.
 
-2. **Map sections to assets.**
-   For each section, look up: its CSS chunk, its island JS chunk (from `@alambic/islands` manifest), its font subsets, its critical image preloads.
+These will land in a Phase 5-full pass if the simple model proves too rough.
 
-3. **Build per-template asset graph.**
-   Aggregate per template, dedupe shared assets.
+## Budget config
 
-4. **Critical CSS per template.**
-   For each template, render a representative HTML against fixture data (provided by the consumer in `test/fixtures/<template>.html` or auto-generated from a smoke render). Extract critical CSS via the configured `CssAdapter.extractCritical`.
+```ts
+// alambic.config.ts
+export default defineConfig({
+  budgets: {
+    perTemplate: { jsKb: 50, cssKb: 30 },
+    perIsland: { jsKb: 20 },
+    onBreach: 'warn', // or 'fail'
+  },
+});
+```
 
-5. **Emit the head snippet.**
-   `snippets/alambic-head.liquid` contains a Liquid `case` switching on `template` (and `template.suffix` where applicable). Each branch emits the right `<link rel="stylesheet">`, `<link rel="preload">`, and `<script type="module">` tags for that template, plus inlines the critical CSS.
-
-6. **Check budgets.**
-   Compare each template's totals against `budgets.perTemplate`. Fail build (or warn, configurable) on breach.
+Defaults: no budgets enforced unless `budgets` is set. `onBreach` defaults to nothing — explicit `'fail'` is required to abort the build.
 
 ## Output: `alambic-head.liquid`
 
@@ -55,87 +96,70 @@ Auto-generated. The consumer's `layout/theme.liquid` includes it once:
 </head>
 ```
 
-The snippet handles everything. The consumer never edits it.
+The snippet dispatches on `template.name` (falls back to `template` for older contexts) and emits `<link rel="modulepreload" href="{{ '<chunk>' | asset_url }}">` tags for the section chunks the current template will use.
 
-## Budget config
+## Build report (`alambic build --report`)
 
-```ts
-// alambic.config.ts
-export default defineConfig({
-  budgets: {
-    perTemplate: {
-      jsKb: 50,
-      cssKb: 30,
-      fontKb: 80,
-      images: { lcpKb: 100 },
-    },
-    perIsland: {
-      jsKb: 20,
-    },
-    onBreach: 'fail',  // or 'warn'
-  },
-});
+JSON written to `<output>/../alambic-report.json` (one directory above staging, so Shopify push doesn't grab it):
+
+```json
+{
+  "templates": [
+    {
+      "template": "index",
+      "jsKb": 46.7,
+      "cssKb": 7.3,
+      "sections": ["hero", "featured"],
+      "sectionChunks": ["sections-featured-client-abc.js"]
+    }
+  ],
+  "budget": { "breaches": [], "shouldFail": false }
+}
 ```
 
-Default: `onBreach: 'warn'` in dev, `'fail'` in CI (detected via `CI=true`).
-
-## Build report
-
-`alambic build --report` writes `dist/alambic-report.json` and prints a summary:
+The terminal table is always logged (no flag required):
 
 ```
-Template          JS      CSS     Fonts   Critical CSS   Status
-─────────────────────────────────────────────────────────────────
-index             42 KB   24 KB   62 KB   3.2 KB         ✓
-product           58 KB   31 KB   62 KB   4.1 KB         ✗ JS over budget
-collection        44 KB   28 KB   62 KB   3.8 KB         ✓
-cart              22 KB   18 KB   62 KB   2.1 KB         ✓
-
-Largest islands by template:
-  product:    product-gallery   38 KB
-  collection: filter-bar        20 KB
+Template   JS       CSS     Sections
+─────────  ───────  ──────  ──────────────
+404        46.7 KB  7.3 KB  hero
+gift_card  46.7 KB  7.3 KB  —
+index      46.7 KB  7.3 KB  hero, featured
 ```
-
-The JSON output is intended for CI dashboards and Claude Code consumption.
 
 ## Internal modules
 
 ```
 src/
 ├── index.ts
-├── plugin.ts
+├── types.ts                      # BuildManifest, TemplateAssetGraph, PerformanceBudget, ...
 ├── resolve/
-│   ├── template-tree.ts        # JSON + Liquid template analysis
-│   ├── section-tree.ts         # Section group resolution
-│   └── asset-graph.ts          # Section → assets mapping
+│   ├── template-tree.ts          # JSON + Liquid + section-group analysis
+│   └── asset-graph.ts            # Section → assets mapping + size aggregation
 ├── emit/
-│   ├── head-snippet.ts         # Generate alambic-head.liquid
-│   └── report.ts               # JSON + console report
-├── critical/
-│   ├── extract.ts              # Wraps adapter.extractCritical
-│   └── render-fixture.ts       # Render template against fixture data
-├── budget/
-│   ├── check.ts
-│   └── format.ts
-└── types.ts
+│   ├── head-snippet.ts           # Generate alambic-head.liquid
+│   └── report.ts                 # JSON + terminal report
+└── budget/
+    └── check.ts                  # Compare manifest totals to budget config
 ```
+
+Each module is a pure function (no I/O beyond `template-tree.ts` reading files). `@alambic/core` is the only caller in practice; tests exercise each subsystem standalone.
 
 ## Dependencies
 
-- `@alambic/core` — Vite plugin contribution, logger.
-
-(Reads the islands manifest emitted to disk by `@alambic/islands`. Reads the adapter's critical CSS function via `AdapterContext`. Neither is a direct package dep — the data flows through filesystem/context.)
+- None at runtime. The package is dependency-free; `@alambic/core` does all the integration.
 
 ## Testing
 
-- Unit tests for template-tree resolution against fixture themes.
-- Snapshot tests for emitted `alambic-head.liquid` per fixture.
-- Budget check tests against synthetic asset graphs.
-- Integration test that builds the example theme and asserts the report matches expectations.
+- `template-tree.test.ts` — parses JSON + Liquid templates + section groups against `mkdtemp` fixtures.
+- `asset-graph.test.ts` — section → assets mapping with synthetic vite + islands manifests.
+- `head-snippet.test.ts` — Liquid snippet output, escape behavior, empty-manifest case.
+- `budget/check.test.ts` — per-template + per-island budgets, pass/fail behavior.
+- `report.test.ts` — JSON + table renderer, sort order, breach lines.
 
 ## Claude Code notes
 
-- Template resolution is the trickiest part. Shopify supports `template.suffix` and conditional sections via section groups. The resolver must handle all variants. Read `src/resolve/template-tree.ts` carefully before changing.
-- Critical CSS extraction is delegated to the CSS adapter. Don't reimplement it here.
-- Budget defaults are intentionally tight. Changing them is a coordinated decision in `docs/conventions.md`.
-- When adding a new asset kind (e.g., a new font format), update `TemplateAssetGraph` and the head snippet generator. Keep the snippet output compact — every byte of Liquid is parsed on every request.
+- **Don't add a new strategy without a real need.** Phase 5 deferred work (critical CSS, per-template CSS chunking, Rollup import-graph walking) is meaty and only worth landing if the lite version turns out to be insufficient.
+- **The snippet name `alambic-head.liquid` is public surface.** Renaming requires a changeset and a migration note.
+- **The report JSON shape is intended to be stable.** Adding fields is fine; renaming or removing requires a changeset because CI dashboards may consume it.
+- **Don't write per-section CSS handling here yet** — sections don't emit per-section CSS chunks today. Add it when the section pipeline does.

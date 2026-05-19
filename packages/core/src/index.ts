@@ -15,7 +15,13 @@ export {
 } from './env/index.js';
 export { applyEnvFiles } from './env/load-env.js';
 export { AlambicError, isAlambicError, type AlambicErrorOptions } from './errors/index.js';
-export { createLogger, type Logger, type LogLevel } from './logger/index.js';
+export {
+  createLogger,
+  setLogLevel,
+  setNoColor,
+  type Logger,
+  type LogLevel,
+} from './logger/index.js';
 export {
   createEventBus,
   type EventBus,

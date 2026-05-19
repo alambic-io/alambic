@@ -6,6 +6,8 @@
     <title>{{ page_title }}</title>
     {{ content_for_header }}
     {% render 'alambic-asset', entry: 'layout/theme' %}
+    {% render 'alambic-islands' %}
+    {% render 'alambic-head', template: template %}
   </head>
   <body class="min-h-screen bg-white text-neutral-900">
     {{ content_for_layout }}

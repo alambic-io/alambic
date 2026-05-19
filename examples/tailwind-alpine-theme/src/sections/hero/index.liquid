@@ -6,27 +6,15 @@
   <h1 class="text-4xl font-semibold tracking-tight">{{ section.settings.heading }}</h1>
   <p class="mt-4 text-neutral-600">{{ section.settings.subheading }}</p>
 
+  {%- for block in section.blocks -%}
+    {% render block %}
+  {%- endfor -%}
+
   <button
     type="button"
     class="mt-8 inline-flex items-center rounded-md bg-neutral-900 px-4 py-2 text-white"
     x-on:click="count++"
   >
-    Clicked <span class="ml-2 tabular-nums" x-text="count"></span> times
+    clicked <span class="ml-2 tabular-nums" x-text="count"></span> times
   </button>
 </section>
-
-{% schema %}
-{
-  "name": "Hero",
-  "settings": [
-    { "type": "text", "id": "heading", "label": "Heading", "default": "Welcome to Alambic" },
-    {
-      "type": "text",
-      "id": "subheading",
-      "label": "Subheading",
-      "default": "A type-safe devkit for Shopify theme development."
-    }
-  ],
-  "presets": [{ "name": "Hero" }]
-}
-{% endschema %}

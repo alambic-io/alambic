@@ -67,7 +67,7 @@ Section presets live in `packages/schema/src/presets/`. Each preset is a functio
 1. Read `docs/adapters.md` and `packages/adapters/CLAUDE.md`.
 2. Adapter packages live outside the monorepo by default. Inside the monorepo, only `preset-tailwind-alpine` exists as the reference.
 3. To add a new in-repo preset (e.g. `preset-unocss-stimulus`), use `/add-package` then implement against the contracts in `@alambic/adapters`.
-4. The new preset must pass the **adapter conformance test suite** exported from `@alambic/test-utils`. This suite is the contract.
+4. The new preset must pass the **adapter conformance test suite** exported from `@alambic/adapters/conformance`. This suite is the contract.
 
 ### 3.4 Change a public API
 

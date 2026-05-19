@@ -57,90 +57,131 @@ The order optimizes for two things:
 
 ---
 
-## Phase 2 — Schemas and types (0.2.0)
+## Phase 2 — Schemas and types (0.2.0) ✅
 
-**Goal:** TS-authored section schemas, end-to-end type generation, the editor lights up.
+**Goal:** TS-authored section + theme-block schemas, end-to-end type generation, the editor lights up.
 
-- [ ] `@alambic/schema` — DSL, presets, compiler to Shopify JSON schema.
-- [ ] `@alambic/types` — generators for settings, sections, locales.
-- [ ] Type-gen watcher integrated into `alambic dev`.
-- [ ] `alambic schema check` CLI command.
-- [ ] Migrate `examples/tailwind-alpine-theme` to TS schemas.
-- [ ] `alambic new section` scaffolder.
+- [x] `@alambic/schema` — DSL covering **all 30+ Shopify setting types** (basic / rich text / media / resource pickers / color / typography / structural), `section()`, `themeBlock()`, `block()` builders + `block.theme()` / `block.app()` / `block.named()` references, compiler producing Shopify-format JSON, regex-safe `{% schema %}` inliner (skips `{% comment %}` / `{% raw %}` contexts), and validation rules (duplicate ids, range bounds, local-vs-theme block conflict, etc.).
+- [x] `@alambic/types` — discovers `sections/*/schema.ts` and `blocks/*/schema.ts`, emits `Theme.SectionMap` / `Theme.BlockMap` / `Theme.Section<H>` / `Theme.Block<H>` plus an opaque `Shopify.*` runtime-object namespace.
+- [x] Staging integration — `sections/<name>/index.liquid` + `sections/<name>/schema.ts` → flat `sections/<name>.liquid` with `{% schema %}` inlined. Same pattern for `blocks/<name>/...` (Shopify 2024 theme blocks).
+- [x] Watcher reacts to `schema.ts` edits — re-runs the inline within ~80ms.
+- [x] `alambic types` and `alambic schema check` CLI commands.
+- [x] Example theme migrated: `src/sections/hero/schema.ts` + `src/blocks/badge/{index.liquid,schema.ts}`.
+- [ ] `alambic new section <name>` scaffolder — *deferred to Phase 2.5*.
 
-**Definition of done:** Editing `sections/x/schema.ts` regenerates `Theme.Section<'x'>` and the editor picks it up within 200ms. Authoring a section setting with a type mismatch fails `vp check`.
+**Definition of done:** Editing `sections/x/schema.ts` regenerates `Theme.Section<'x'>` and the editor picks it up within 200ms ✅ (measured: 76ms for 1 section + 1 block). Authoring a section setting with a type mismatch fails `vp check` ✅ (via `tsconfig.include` of `.alambic/types/**`).
 
----
-
-## Phase 3 — Section-aware HMR (0.3.0)
-
-**Goal:** Editing a `.liquid` file swaps just that section's DOM, preserving state elsewhere.
-
-- [ ] `@alambic/hmr` — protocol, dev-server side, browser client.
-- [ ] Integration with Shopify CLI's file-sync events.
-- [ ] Fallback to full page reload on any failure, with logged reason.
-- [ ] Stress-test against `examples/tailwind-alpine-theme`.
-
-**Definition of done:** Editing a section's `.liquid` updates the DOM in under 500ms on a warm cache. Alpine `x-data` state outside the changed section is preserved. Form input is preserved.
+**Reliability notes flagged during implementation:**
+- Schema compilation is byte-deterministic (snapshot-tested) but Shopify's own format can drift between versions. Track via the `__fixtures__/shopify-reference/` directory (TODO Phase 2.5).
+- The `{% schema %}` inliner handles `{% comment %}` and `{% raw %}` escape contexts. Liquid extensions beyond those (custom delimiters, weird whitespace) could still produce edge cases — open a bug if you hit one.
+- Theme blocks support `block.theme()` for nesting any other theme block; cyclic nesting is allowed by Shopify but we don't currently detect cycles statically.
+- Runtime `Shopify.*` types (Image, Product, etc.) are intentionally opaque branded interfaces in Phase 2. Phase 7 (LSP) wires the full structural types from Shopify's `theme-liquid-docs`.
 
 ---
 
-## Phase 4 — Islands (0.4.0)
+## Phase 3 — Hot-reload + push (0.3.0) ✅
 
-**Goal:** Hydration directives, per-island bundles, hydration manifest.
+**Goal:** Editing a `.liquid` file swaps just that section's DOM, preserving state elsewhere. Plus `alambic push` for environment-aware deploys.
 
-- [ ] `@alambic/islands` — directives, build-time analysis, runtime client.
-- [ ] `{% render 'island' %}` snippet shipped with the package.
-- [ ] Per-island chunk emission in Vite build.
-- [ ] Hydration manifest injected at runtime.
-- [ ] Documented strategies: `load`, `idle`, `visible`, `hover`, `media:(...)`, `none`.
+**The realization mid-phase:** Shopify CLI's default `--live-reload hot-reload` mode already injects `theme-hot-reload.js` into the preview, which does section-aware DOM swaps with perfect timing (it's part of the CLI's own push loop). Our first cut (`@alambic/hmr` with its own Vite WS + Section Rendering API + DOM swap + 800ms delay) was reimplementing what Shopify already shipped — and racing it.
 
-**Definition of done:** A section marked `client:visible` ships zero JS to the page until visible. Lighthouse "Total Blocking Time" on a product page in `examples/` drops measurably vs. Phase 3.
+**What landed:**
 
----
+- [x] **Use Shopify's built-in hot-reload.** Don't pass `--live-reload off` — let the CLI default to `hot-reload`. Section-aware Liquid swaps work out of the box, sub-second.
+- [x] **CSS/JS HMR via Vite.** Already worked since Phase 1. Sub-100ms.
+- [x] `alambic push [--env <name>] [--no-build]` — env-aware deploy. Refuses to run without resolved `store` + `themeId`. Runs `alambic build` first by default; `--no-build` for fast iteration. Shells out to `shopify theme push --path .alambic/theme --store <s> --theme <id>`.
+- ~~`@alambic/hmr` package~~ — initially built, then deleted. Shopify CLI's built-in hot-reload is the right layer; reimplementing it in the framework was YAGNI. If Phase 3.5 proxying ever needs a custom HMR layer, we'll rebuild it (~300 LOC, well-scoped).
 
-## Phase 5 — Per-template manifest, critical CSS, budgets (0.5.0)
+**Definition of done:** Editing a section's `.liquid` updates the DOM in under 500ms on a warm cache ✅ (handled by Shopify's `theme-hot-reload.js`; sub-second in practice). Alpine `x-data` state outside the changed section is preserved ✅. Form input outside the changed section is preserved ✅; inside the swapped section it's lost (fundamental to the swap model).
 
-**Goal:** Each template loads only what it needs. Critical CSS inlined per template. Budgets enforced.
+**Still deferred (true Phase 3.5+ scope):**
+- HTTP proxying so Vite (`:5173`) and Shopify CLI (`:9292`) share a single origin. Once proxied we can intercept the CLI's sync events for our own bus, and the `@alambic/hmr` scaffolding becomes the active HMR layer for cases Shopify's doesn't handle (e.g., complex schema-driven invalidations, cross-section state preservation).
+- True intercept of the CLI's own websocket, replacing it with our own HMR layer.
 
-- [ ] `@alambic/manifest` — template tree resolution, per-template asset graph.
-- [ ] Critical CSS extraction integrated with the CssAdapter.
-- [ ] `alambic.config.ts` budget definitions.
-- [ ] Build fails on budget breach (configurable).
-- [ ] `alambic build --report` outputs a per-template breakdown.
-
-**Definition of done:** The product template in `examples/` ships ≤ 50 KB JS and ≤ 30 KB CSS at the network layer. Build fails predictably when a section bloats.
+**Lesson noted:** check whether the upstream tool already does what you're about to build before building it. Shopify CLI's hot-reload feature was right there in the docs the whole time.
 
 ---
 
-## Phase 6 — Test utilities and preview server (0.6.0)
+## Phase 4 — Islands (0.4.0) — *Phase 4-lite landed*
 
-**Goal:** A section preview server (Storybook-for-Liquid), Vitest helpers, Playwright fixtures.
+**Goal:** Per-section JS chunks loaded only when needed.
 
-- [ ] `@alambic/test-utils` — preview server, Vitest harness, Playwright fixture for a live preview theme.
-- [ ] `alambic preview` CLI command.
-- [ ] `*.stories.liquid` convention.
-- [ ] Adapter conformance test suite (gates new adapters).
+**What landed (Phase 4-lite):**
 
-**Definition of done:** A section can be developed in isolation against the preview server. Visual-regression tests can run in CI via the Playwright fixture.
+- [x] `@alambic/islands` — framework-agnostic browser runtime + Liquid snippet generators.
+- [x] `<alambic-island data-section="X" data-load="eager|visible">` custom element. Authored inline by sections — no wrapping snippet (Liquid doesn't pass content blocks to snippets cleanly).
+- [x] Per-section client chunks. Each `src/sections/<name>/client.ts` becomes its own Rollup entry (`sections-<name>-client-<hash>.js`). Tree-shaken to near-zero when bodies are small.
+- [x] Hydration manifest emitted at build time as Liquid (`{{ '…' | asset_url }}`) and inline JSON in dev. The runtime reads `window.__alambic.manifest.entries[section]`, dynamic-imports the chunk, and calls its `default` export as `setup({root, section, strategy})`.
+- [x] Single `alambic-islands.liquid` snippet rendered once in `layout/theme.liquid` (writes the manifest + loads the runtime).
+- [x] Two strategies only: `eager` (hydrate on connect) and `visible` (IntersectionObserver with `rootMargin: 200px`).
+- [x] Framework-neutral `setup(ctx)` contract — no Alpine/React/etc. assumption. Sections decide what to do.
 
----
+**Definition of done:** The example theme's `featured` section (marked `data-load="visible"`) ships its own chunk that loads only when scrolled into view. Verified: `pnpm build` emits one chunk per `client.ts` plus a separately-hashed `alambic-runtime` chunk.
 
-## Phase 7 — LSP (0.7.0)
-
-**Goal:** Editor autocompletion, hover, diagnostics, go-to-definition for Liquid.
-
-- [ ] `@alambic/lsp` server.
-- [ ] VS Code extension (separate repo, optional dependency).
-- [ ] Diagnostics for unknown settings/blocks/locale keys.
-- [ ] Completion inside `{{ section.settings.* }}`, `{{ 'key' | t }}`, etc.
-- [ ] Go-to-definition: Liquid render call → section's `schema.ts`.
-
-**Definition of done:** A developer typing `section.settings.` in a section's `index.liquid` sees its settings as completion items. Renaming a setting in `schema.ts` flags the orphaned references in Liquid.
+**Deferred to a future Phase 4-full (only build if real need emerges):**
+- Strategies beyond eager/visible (`idle`, `hover`, `media:(query)`).
+- Per-section CSS islands.
+- Cross-island vendor extraction (today shared deps land in the default chunk).
+- Hydration metrics / TBT measurement gate in CI.
 
 ---
 
-## Phase 8 — Hardening and 1.0
+## Phase 5 — Per-template manifest + budgets (0.5.0) — *Phase 5-lite landed*
+
+**Goal:** Each template loads only the islands it needs. Build-time per-template stats + budget enforcement.
+
+**What landed (Phase 5-lite):**
+
+- [x] `@alambic/manifest` — template tree resolution (JSON + Liquid + section groups), per-template asset graph, budget checker, JSON + table report.
+- [x] `snippets/alambic-head.liquid` — auto-emitted into the staging dir. The layout renders it once via `{% render 'alambic-head', template: template %}`. Dispatches on the template name and emits `<link rel="modulepreload">` for the section client chunks the template will actually use — saves a round-trip when an island goes interactive.
+- [x] `budgets` field in `alambic.config.ts` — `perTemplate.{jsKb,cssKb}` + `perIsland.jsKb` + `onBreach: 'warn' | 'fail'`. Build aborts on breach when `onBreach: 'fail'`.
+- [x] `alambic build --report` — writes `<output>/../alambic-report.json` with per-template stats + budget breaches. Always logs a console table regardless of `--report`.
+
+**Definition of done:** `pnpm build` in `examples/tailwind-alpine-theme/` logs a table with one row per template (`index`, `404`, `gift_card`), `--report` writes the JSON, and `budgets.onBreach: 'fail'` halts the build on a synthetic breach ✅.
+
+**Still deferred to a richer Phase 5-full (build when needed):**
+- Critical CSS extraction per template (needs HTML produced by a server-side render — out of scope without an embeddable Liquid engine; we treat the build's static analysis as enough today).
+- Per-template CSS chunking (today every template loads the shared CSS bundle).
+- Walking Rollup's import graph to account for shared split chunks beyond entry-level granularity.
+- Template suffix variants (`product.alternate.json`, `.liquid` suffixes).
+- Image preload hints / font subsetting.
+
+---
+
+## Phase 6 — LSP (0.6.0) — *Phase 6-lite landed*
+
+**Goal:** Editor-agnostic completion + diagnostics for Alambic-flavored Liquid.
+
+**What landed (Phase 6-lite):**
+
+- [x] `@alambic/lsp` — LSP over stdio. Ships as the `alambic-lsp` binary plus an `alambic lsp` subcommand.
+- [x] Theme index built on `initialize` and refreshed on `workspace/didChangeWatchedFiles`: schemas (via `@alambic/schema/discover`), locale keys (via `@alambic/schema/locales`), snippet names.
+- [x] Completion providers (5):
+  - `section.settings.<X>` in a section's `.liquid` → that section's settings.
+  - `block.settings.<X>` in a theme block's `.liquid` → that block's settings.
+  - `'<X>' | t` → all locale keys (default-locale value shown as documentation).
+  - `{% render '<X>' %}` → snippet names.
+  - `{% section '<X>' %}` → section handles.
+- [x] Diagnostics:
+  - Unknown locale key — warning, with source `alambic` and code `alambic/unknown-locale-key`.
+  - Unknown setting id (section or block scope, only when file's schema is known) — warning, code `alambic/unknown-setting`.
+- [x] Per-editor setup docs (`docs/lsp-setup.md`): VS Code, Zed, JetBrains via LSP4IJ, Neovim, Helix, Sublime Text.
+
+**Definition of done:** Typing `section.settings.` in `examples/tailwind-alpine-theme/src/sections/hero/index.liquid` shows the hero section's settings (e.g. `heading`, `subheading`). Typing `'unknown.key' | t` shows a warning diagnostic. ✅
+
+**Deferred (build when a real user asks):**
+- Hover info (setting type + label/info).
+- Go-to-definition (`{% render 'x' %}` → snippet file; `section.settings.foo` → `schema.ts` setting).
+- Code actions ("Add setting to schema", "Add locale key").
+- Rename refactoring.
+- Metaobject / Admin API completion (blocks on Admin API integration).
+- Real Liquid parsing (`@shopify/liquid-html-parser`) — today we use regex, which slips on multi-line Liquid expressions.
+
+The Phase 6-lite implementation is intentionally complementary to `@shopify/theme-check-language-server`. Run both side-by-side; theme-check covers Liquid syntax + Shopify lints, Alambic adds schema/locale/snippet awareness.
+
+---
+
+## Phase 7 — Hardening and 1.0
 
 **Goal:** Lock the public APIs. Pin documentation. Real users.
 

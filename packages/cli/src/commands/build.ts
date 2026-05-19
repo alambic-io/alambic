@@ -6,6 +6,8 @@ export interface BuildOptions {
   cwd: string;
   configPath?: string;
   envName?: string;
+  /** Write `<output>/../alambic-report.json` with per-template stats. */
+  report?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       ...config,
       noShopifyCli: true,
       ...(envName !== null ? { activeEnvironmentName: envName } : {}),
+      ...(options.report ? { emitReport: true } : {}),
     }),
   });
 

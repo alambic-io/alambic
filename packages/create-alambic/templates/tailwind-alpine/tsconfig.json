@@ -7,6 +7,6 @@
     "allowImportingTsExtensions": false,
     "verbatimModuleSyntax": false
   },
-  "include": ["alambic.config.ts", "src/**/*.ts"],
-  "exclude": ["dist"]
+  "include": ["alambic.config.ts", "src/**/*.ts", ".alambic/types/**/*.d.ts"],
+  "exclude": [".alambic/theme"]
 }

@@ -19,6 +19,7 @@ const TEXT_EXTENSIONS = new Set([
   '.yaml',
   '.gitignore',
   '.env',
+  '.shopifyignore',
 ]);
 
 /**

@@ -1,4 +1,5 @@
 import type { CssAdapter, JsAdapter, Preset } from '@alambic/adapters';
+import type { PerformanceBudget } from '@alambic/manifest';
 import type { Environment, ResolvedEnvironment } from './env/index.js';
 
 /**
@@ -44,6 +45,13 @@ export interface AlambicConfig {
   defaultEnvironment?: string;
 
   /**
+   * Per-template performance budgets. Checked at the end of every build.
+   * Setting `onBreach: 'fail'` makes the build exit non-zero on breach.
+   * Defaults to `{ onBreach: 'warn' }` so unset budgets just log.
+   */
+  budgets?: PerformanceBudget;
+
+  /**
    * Optional dev-mode overrides.
    */
   dev?: {
@@ -53,6 +61,13 @@ export interface AlambicConfig {
     shopifyPort?: number;
     /** Whether to spawn `shopify theme dev` automatically. Default: true. */
     spawnShopifyCli?: boolean;
+    /**
+     * Auto-open `http://127.0.0.1:<shopifyPort>` in the browser when dev
+     * starts. The local URL is what has hot-reload wired up — the public
+     * `<store>.myshopify.com/?preview_theme_id=...` share URL does not.
+     * Default: true.
+     */
+    openInBrowser?: boolean;
     /** Extra arguments passed to `shopify theme dev`. */
     shopifyCliArgs?: string[];
   };
@@ -73,6 +88,11 @@ export interface AlambicPluginOptions extends AlambicConfig {
    * absent, the plugin falls back to `defaultEnvironment`.
    */
   activeEnvironmentName?: string;
+  /**
+   * Set by `alambic build --report` to ask the plugin to write
+   * `<output>/alambic-report.json` after the build completes.
+   */
+  emitReport?: boolean;
 }
 
 export interface ResolvedAlambicConfig {
@@ -81,10 +101,12 @@ export interface ResolvedAlambicConfig {
   preset: Preset | null;
   css: CssAdapter | null;
   js: JsAdapter | null;
+  budgets: PerformanceBudget | null;
   dev: {
     vitePort: number;
     shopifyPort: number;
     spawnShopifyCli: boolean;
+    openInBrowser: boolean;
     shopifyCliArgs: ReadonlyArray<string>;
   };
   /** The name of the active environment, if one is in effect. */

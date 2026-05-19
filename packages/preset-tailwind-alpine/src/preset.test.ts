@@ -1,7 +1,8 @@
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { cssAdapterCases, jsAdapterCases, makeStubContext } from '@alambic/adapters/conformance';
+import { describe, expect, it, test } from 'vitest';
 import { alpine, alpineEntries, tailwindAlpine, tailwindCss } from './index.js';
 
 describe('tailwindAlpine preset', () => {
@@ -81,4 +82,22 @@ describe('alpineEntries', () => {
     ]);
     expect(entries.every((e) => e.kind === 'section')).toBe(true);
   });
+});
+
+// The adapter conformance suite is the contract test. Every preset must
+// pass it; failures here mean a regression in the contract or in the
+// preset's structural compliance.
+describe('tailwindAlpine — adapter conformance', () => {
+  const preset = tailwindAlpine();
+  const ctx = makeStubContext();
+  for (const c of cssAdapterCases) {
+    test(`css / ${c.name}`, async () => {
+      await c.run(preset.css, ctx);
+    });
+  }
+  for (const c of jsAdapterCases) {
+    test(`js / ${c.name}`, async () => {
+      await c.run(preset.js, ctx);
+    });
+  }
 });

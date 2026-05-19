@@ -37,8 +37,12 @@
   },
   "dependencies": {
     "@alambic/adapters": "workspace:*",
+    "@alambic/islands": "workspace:*",
+    "@alambic/manifest": "workspace:*",
+    "@alambic/schema": "workspace:*",
     "chokidar": "^4.0.3",
     "consola": "^3.4.2",
+    "jiti": "^2.7.0",
     "tinyglobby": "^0.2.10"
   },
   "devDependencies": {

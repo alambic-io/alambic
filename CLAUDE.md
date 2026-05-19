@@ -74,13 +74,12 @@ alambic/
 │   ├── core/                       # Vite plugin entry, orchestrator, staging
 │   ├── schema/                     # TS-authored section schemas        (Phase 2)
 │   ├── types/                      # Theme-wide type generation         (Phase 2)
-│   ├── hmr/                        # Section-aware HMR                  (Phase 3)
-│   ├── islands/                    # Hydration directives & bundling    (Phase 4)
-│   ├── manifest/                   # Per-template manifest, critical CSS (Phase 5)
+│   │                               # (Phase 3 HMR is handled by Shopify CLI's built-in `theme-hot-reload.js`)
+│   ├── islands/                    # Per-section JS chunks + <alambic-island> runtime (Phase 4-lite)
+│   ├── manifest/                   # Per-template asset graph + budgets + head snippet (Phase 5-lite)
 │   ├── adapters/                   # CSS + JS adapter contracts
 │   ├── preset-tailwind-alpine/     # Default preset
-│   ├── test-utils/                 # Vitest helpers, preview server     (Phase 6)
-│   ├── lsp/                        # Liquid LSP server                  (Phase 7)
+│   ├── lsp/                        # Liquid LSP server                  (Phase 6-lite)
 │   ├── cli/                        # `alambic` CLI
 │   └── create-alambic/             # `pnpm create alambic` scaffolder
 └── examples/
@@ -93,16 +92,14 @@ alambic/
 
 | Package | Role | Depends on |
 |---|---|---|
-| `@alambic/core` | Vite plugin, dev server orchestration, build pipeline | `adapters`, `manifest` |
+| `@alambic/core` | Vite plugin, dev server orchestration, build pipeline | `adapters`, `schema`, `islands`, `manifest` |
 | `@alambic/schema` | Section schema DSL → JSON schema + TS types | — |
 | `@alambic/types` | Theme-wide type generation | `schema` |
-| `@alambic/hmr` | Section-aware HMR via Section Rendering API | `core` |
-| `@alambic/islands` | Hydration directives, per-island bundling | `core`, `adapters` |
-| `@alambic/manifest` | Per-template manifest, critical CSS, budgets | — |
+| `@alambic/islands` | Per-section JS chunks + `<alambic-island>` runtime + manifest snippet | — |
+| `@alambic/manifest` | Per-template asset graph + budgets + head snippet | — |
 | `@alambic/adapters` | CSS + JS adapter contracts | — |
 | `@alambic/preset-tailwind-alpine` | Reference preset | `adapters` |
-| `@alambic/test-utils` | Vitest helpers, Playwright fixtures, preview server | `schema` |
-| `@alambic/lsp` | Liquid LSP server | `schema`, `types` |
+| `@alambic/lsp` | Liquid LSP server (editor-agnostic, stdio) | `schema` |
 | `@alambic/cli` | `alambic dev / build / new / doctor` | `core`, `types` |
 | `create-alambic` | Scaffolder | — |
 

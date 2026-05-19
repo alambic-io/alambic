@@ -13,7 +13,9 @@
   "dependencies": {
     "@alambic/cli": "workspace:*",
     "@alambic/core": "workspace:*",
+    "@alambic/islands": "workspace:*",
     "@alambic/preset-tailwind-alpine": "workspace:*",
+    "@alambic/schema": "workspace:*",
     "@tailwindcss/vite": "^4.1.16",
     "alpinejs": "^3.14.9",
     "tailwindcss": "^4.1.16"

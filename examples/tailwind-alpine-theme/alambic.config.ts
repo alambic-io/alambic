@@ -4,6 +4,11 @@ import { tailwindAlpine } from '@alambic/preset-tailwind-alpine';
 export default defineConfig({
   preset: tailwindAlpine(),
   // themeRoot defaults to './src', output defaults to './.alambic/theme'.
+  budgets: {
+    perTemplate: { jsKb: 80, cssKb: 30 },
+    perIsland: { jsKb: 20 },
+    onBreach: 'warn',
+  },
   environments: {
     dev: {
       store: env('SHOPIFY_DEV_STORE'),
