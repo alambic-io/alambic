@@ -31,16 +31,35 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        # The "Failed to create bin at .../dist/cli.mjs" warnings on this
+        # step are expected on a cold checkout — pnpm tries to symlink
+        # the workspace bins before any package has been built. The next
+        # step (Build) creates those files; the bins get recreated on
+        # the next install. The warnings don't affect anything downstream.
         run: pnpm install --frozen-lockfile
+
+      - name: Build
+        # Must run BEFORE Check. Each `@alambic/*` package publishes its
+        # public API via `dist/*.d.mts` (per its `exports` map), so the
+        # typechecker can't resolve `@alambic/adapters`, `@alambic/manifest`,
+        # etc. until their dist/ folders exist.
+        run: pnpm exec vp run -r build
 
       - name: Check (fmt + lint + typecheck)
         run: pnpm exec vp check
 
-      - name: Build
-        run: pnpm exec vp run -r build
-
       - name: Test
         run: pnpm exec vp run -r test
 
-      - name: Doctor
+      - name: Install Shopify CLI
+        # Doctor's `Shopify CLI: fail if missing` check needs the
+        # binary on PATH. The runner image doesn't ship it.
+        run: npm install -g @shopify/cli@latest
+
+      - name: Doctor (versions smoke from workspace root)
+        # Run at workspace root: no alambic.config.ts here, so only the
+        # Versions check fires. That's enough to catch shopify-cli /
+        # node / pnpm version regressions in CI. A richer doctor sweep
+        # against the example theme would need `.env` files we don't
+        # ship — keep that for local dogfooding.
         run: pnpm exec alambic doctor
